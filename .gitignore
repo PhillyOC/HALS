@@ -1,0 +1,27 @@
+# Credentials and local configuration
+/Secrets/*
+!/Secrets/*.example.json
+!/Secrets/OAuth/
+/Secrets/OAuth/*
+!/Secrets/OAuth/*.example.json
+/Config/AI.json
+/Config/Connections.json
+
+# Runtime data containing device and network information
+/Snapshots/*
+!/Snapshots/.gitkeep
+/Knowledge/*
+!/Knowledge/.gitkeep
+
+# Local test fixtures and logs
+/Test/
+*.log
+*.tmp
+
+# PowerShell and editor artifacts
+*.clixml
+*.user
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

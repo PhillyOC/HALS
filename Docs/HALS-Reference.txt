@@ -1,0 +1,496 @@
+#==========================================================
+#
+#  HALS - Home Automation & Logging System
+#  User Reference Manual
+#  Version : 0.6.x
+#
+#==========================================================
+
+
+============================================================
+ OVERVIEW
+============================================================
+
+HALS (Home Automation & Logging System) is a PowerShell-based
+home automation platform running on your local PC. It connects
+to your home's smart-device APIs, builds a unified device
+inventory, and exposes an AI assistant (HALSAI) that can answer
+questions about your home and execute device commands in plain
+English.
+
+Connected providers
+  - UniFi          Network infrastructure and client discovery
+  - SmartThings    Smart lights, sensors, locks, sirens, plugs
+  - Home Assistant Extended device and automation visibility
+
+AI providers (switchable)
+  - OpenAI         GPT models via Responses API
+  - Claude         Anthropic Claude models via Messages API
+
+
+============================================================
+ STARTING HALS
+============================================================
+
+Open a PowerShell terminal and run:
+
+    & '.\Start-HALS.ps1'
+
+This loads all modules, connects to all providers, runs a
+full inventory scan, displays the device table, and drops
+you into the HALS interactive session.
+
+To rescan at any time from the HALS prompt, run:   HALS
+
+
+============================================================
+ COMMAND REFERENCE
+============================================================
+
+Commands are grouped below by category. All commands are
+available after Start-HALS.ps1 has run.
+
+------------------------------------------------------------
+ CORE
+------------------------------------------------------------
+
+HALS
+  Runs a full inventory scan across all connected providers
+  (UniFi, SmartThings, Home Assistant). Rebuilds the device
+  table, runs the New Device Wizard for any unknown devices,
+  saves a snapshot, and displays provider health.
+
+  Example:
+    HALS
+
+Help
+  Displays the quick-reference command list in the terminal.
+
+  Example:
+    Help
+
+Version
+  Displays the current HALS version number.
+
+  Example:
+    Version
+
+------------------------------------------------------------
+ HALSAI  (Natural Language Assistant)
+------------------------------------------------------------
+
+Ask-HALSAI
+  Sends a plain-English question or instruction to the active
+  AI provider. HALSAI can answer questions about your home
+  and execute device commands. For action requests it always
+  produces an execution plan and asks for confirmation before
+  running it.
+
+  Examples:
+    Ask-HALSAI "turn the living room lights blue"
+    Ask-HALSAI "make the bedroom lights look like a sunset"
+    Ask-HALSAI "is the front door locked?"
+    Ask-HALSAI "which lights are on right now?"
+    Ask-HALSAI "turn off everything"
+
+Initialize-HALSAI
+  Displays the available AI providers and starts the selected
+  provider's setup wizard.
+
+  Example:
+    Initialize-HALSAI
+
+Initialize-OpenAI
+  Sets up the OpenAI provider. Prompts for an API key and
+  model, tests the connection, and saves the provider to
+  Config\AI.json.
+
+  Example:
+    Initialize-OpenAI
+
+Initialize-HALSClaude
+  First-run setup wizard for the Anthropic Claude provider.
+  Prompts for an API key, lets you choose a Claude model
+  (Opus, Sonnet, or Haiku), tests the connection live, and
+  optionally sets Claude as the active provider.
+
+  Example:
+    Initialize-HALSClaude
+
+Switch-HALSAIProvider
+  Switches the active AI provider between OpenAI and Claude.
+  Both providers must already be configured. Validates the
+  target provider's credentials before switching.
+
+  Parameters:
+    -Provider    OpenAI | Claude
+
+  Examples:
+    Switch-HALSAIProvider -Provider Claude
+    Switch-HALSAIProvider -Provider OpenAI
+
+------------------------------------------------------------
+ DEVICE INVENTORY & KNOWLEDGE
+------------------------------------------------------------
+
+Knowledge
+  Displays the Known Device registry - all devices that have
+  been named and categorised through the New Device Wizard or
+  manual registration. Shows friendly name, category, MAC
+  address, and any tags.
+
+  Example:
+    Knowledge
+
+Add-HALSKnownDevice
+  Manually registers a device in the Knowledge Base by MAC
+  address. Useful for adding devices that haven't appeared in
+  a scan yet or for correcting entries.
+
+  Parameters:
+    -MAC            Device MAC address (or HA:entity_id for
+                    Home Assistant devices)
+    -FriendlyName   Human-readable name
+    -Category       Device category label
+    -Tags           Optional string array of tags
+
+  Example:
+    Add-HALSKnownDevice `
+        -MAC "aa:bb:cc:dd:ee:ff" `
+        -FriendlyName "Kitchen Speaker" `
+        -Category "Smart Assistant"
+
+Get-HALSKnownDevices
+  Returns all Known Device entries as objects. Useful for
+  piping or programmatic access.
+
+  Example:
+    Get-HALSKnownDevices | Where-Object Category -eq "Sensor"
+
+------------------------------------------------------------
+ SNAPSHOTS & COMPARISON
+------------------------------------------------------------
+
+Snapshots
+  Lists all saved device snapshots in reverse chronological
+  order, showing filename and timestamp.
+
+  Example:
+    Snapshots
+
+CompareHALS
+  Compares the two most recent snapshots and reports changes:
+  new devices discovered, devices that have gone missing, and
+  IP address changes. Filters out non-physical Home Assistant
+  entities to keep the output clean.
+
+  Example:
+    CompareHALS
+
+Save-HALSSnapshot
+  Manually saves the current device inventory to a dated
+  snapshot file in Snapshots\. The HALS command does
+  this automatically on every scan.
+
+  Example:
+    Save-HALSSnapshot -Devices $Global:HALSInventory.Devices
+
+------------------------------------------------------------
+ PROVIDER HEALTH
+------------------------------------------------------------
+
+Get-HALSProviderHealth
+  Returns the current health status of all providers as a
+  hashtable. Status values: Healthy, Offline.
+
+  Example:
+    Get-HALSProviderHealth
+
+Test-HALSProviderHealthy
+  Returns True/False for a single named provider.
+
+  Parameters:
+    -Provider    Provider name (UniFi, SmartThings,
+                 HomeAssistant)
+
+  Example:
+    Test-HALSProviderHealthy -Provider SmartThings
+
+------------------------------------------------------------
+ HALSLAB  (Experiments, Observations & Evidence)
+------------------------------------------------------------
+
+HALSLab is HALS's built-in engineering notebook. Use it to
+track investigations, log observations, and record findings
+as you diagnose or develop automations.
+
+Start-HALSExperiment
+  Creates a new experiment entry in the HALSLab journal.
+  Experiments are the top-level container for an investigation.
+
+  Parameters:
+    -Title       Short title for the experiment
+    -Objective   What you are trying to find out or achieve
+    -Provider    Optional - which provider this relates to
+
+  Example:
+    Start-HALSExperiment `
+        -Title "Motion sensor false positives" `
+        -Objective "Determine why basement sensor fires at 3am"
+
+Get-HALSExperiments
+  Lists all recorded experiments with their title, objective,
+  status, and timestamps.
+
+  Example:
+    Get-HALSExperiments
+
+Find-HALSExperiment
+  Searches experiment records by keyword.
+
+  Example:
+    Find-HALSExperiment -Search "motion"
+
+Clear-HALSExperiments
+  Deletes all experiment records. Use with care.
+
+  Example:
+    Clear-HALSExperiments
+
+Get-HALSObservations
+  Lists all logged observations across all experiments.
+  Observations are timestamped notes attached to a category
+  and severity level.
+
+  Example:
+    Get-HALSObservations
+
+Add-HALSObservation
+  Manually records an observation.
+
+  Parameters:
+    -Category    Topic area (e.g. "Provider", "Motion",
+                 "Network")
+    -Summary     What you observed
+    -Provider    Optional - related provider
+    -Severity    Information | Warning | Critical
+                 (default: Information)
+
+  Example:
+    Add-HALSObservation `
+        -Category "Motion" `
+        -Summary "Basement sensor triggered at 03:14 with no presence" `
+        -Severity "Warning"
+
+Find-HALSObservation
+  Searches observations by keyword.
+
+  Example:
+    Find-HALSObservation -Search "basement"
+
+Clear-HALSObservations
+  Deletes all observation records.
+
+Get-HALSEvidence
+  Lists all collected evidence entries. Evidence is structured
+  finding data with source, category, severity, and a
+  confidence score (0-100).
+
+  Example:
+    Get-HALSEvidence
+
+Add-HALSEvidence
+  Manually records a piece of evidence.
+
+  Parameters:
+    -Source      Where the finding came from
+    -Finding     What was found
+    -Category    Topic area
+    -Severity    Information | Warning | Critical
+    -Confidence  0-100 confidence score (default: 100)
+
+  Example:
+    Add-HALSEvidence `
+        -Source "SmartThings" `
+        -Finding "Motion sensor battery at 12%" `
+        -Category "Hardware" `
+        -Severity "Warning" `
+        -Confidence 95
+
+Find-HALSEvidence
+  Searches evidence records by keyword.
+
+  Example:
+    Find-HALSEvidence -Search "battery"
+
+Clear-HALSEvidence
+  Deletes all evidence records.
+
+------------------------------------------------------------
+ SMARTTHINGS OAUTH
+------------------------------------------------------------
+
+Initialize-HALSSmartThingsOAuth
+  Launches the SmartThings OAuth authorization flow. Opens
+  your browser to the SmartThings consent page. Requires the
+  HALS Gateway to be running in a second terminal to capture
+  the redirect and exchange the authorization code for tokens
+  automatically.
+
+  Prerequisite - in a second terminal run:
+    & '.\Gateway\HALSGateway.ps1'
+
+  Then run:
+    Initialize-HALSSmartThingsOAuth
+
+Complete-HALSSmartThingsOAuth
+  Manual fallback for completing the OAuth flow by pasting
+  the full redirect URL. Use this if the Gateway is not
+  running.
+
+  Parameters:
+    -RedirectUrl   The full URL from your browser's address
+                   bar after approving HALS on SmartThings
+
+  Example:
+    Complete-HALSSmartThingsOAuth `
+        -RedirectUrl "https://hals.example.com/?code=abc123"
+
+------------------------------------------------------------
+ COLOR ENGINE
+------------------------------------------------------------
+
+Find-HALSColor
+  Searches the built-in CSS color database (148 colors) by
+  name fragment. Useful for finding the right color name to
+  use with Ask-HALSAI or SetColor commands.
+
+  Parameters:
+    -Search    Partial color name to search for
+
+  Examples:
+    Find-HALSColor -Search "blue"
+    Find-HALSColor -Search "red"
+
+Get-HALSColor
+  Returns a single color object (Name, Hex, RGB) by exact
+  CSS color name.
+
+  Example:
+    Get-HALSColor -Name "coral"
+
+------------------------------------------------------------
+ RAW PROVIDER ACCESS
+------------------------------------------------------------
+
+These commands give direct access to each provider's API.
+They are used internally by HALS but are available for
+diagnostics or scripting.
+
+Get-SmartThingsDevices
+  Returns the raw device list from SmartThings.
+
+Get-SmartThingsDeviceStatus -DeviceId <id>
+  Returns the full capability status for one SmartThings
+  device.
+
+Get-HomeAssistantInventory
+  Returns all Home Assistant entity states.
+
+Get-UniFiClients
+  Returns all currently connected UniFi network clients.
+
+Get-UniFiInfrastructure
+  Returns UniFi access points, gateways, and switches.
+
+Get-HALSProviderHealth
+  Returns the current health record for all providers.
+
+
+============================================================
+ QUICK-START GUIDE
+============================================================
+
+Step 1 — Start HALS
+  Open PowerShell and run:
+    & '.\Start-HALS.ps1'
+
+  HALS will connect to UniFi, SmartThings, and Home Assistant,
+  build your device table, and display provider health. You
+  will be prompted to name any newly discovered devices.
+
+Step 2 — Name your devices
+  When the New Device Wizard appears for an unknown device,
+  choose:
+    [U]  Keep the current name as-is
+    [R]  Rename it to something friendlier
+    [S]  Skip for now (it will appear again next scan)
+
+  Named devices are saved permanently to the Knowledge Base
+  and will not appear in the wizard again.
+
+Step 3 — Talk to HALSAI
+  Use plain English to control devices or ask questions:
+
+    Ask-HALSAI "turn the living room lights red"
+    Ask-HALSAI "set the bedroom to a warm white"
+    Ask-HALSAI "make the lights look like a thunderstorm"
+    Ask-HALSAI "which sensors are showing motion?"
+    Ask-HALSAI "is the front door closed?"
+
+  HALSAI will show you the plan it intends to execute and
+  ask for confirmation (Y/N) before sending any commands.
+
+Step 4 — Set up a second AI provider (optional)
+  HALS ships pre-configured for OpenAI. To add Claude:
+    Initialize-HALSClaude
+  To switch between them at any time:
+    Switch-HALSAIProvider -Provider Claude
+    Switch-HALSAIProvider -Provider OpenAI
+
+Step 5 — Authorize SmartThings OAuth (if needed)
+  If SmartThings shows Offline at startup, the PAT token has
+  expired. Re-authorize with OAuth for persistent access:
+
+  Terminal 1:
+    & '.\Gateway\HALSGateway.ps1'
+  Terminal 2 (HALS session):
+    Initialize-HALSSmartThingsOAuth
+
+  Approve the request in your browser. The Gateway captures
+  the callback and saves tokens automatically.
+
+Step 6 — Investigate with HALSLab (optional)
+  If you want to track an investigation:
+    Start-HALSExperiment -Title "..." -Objective "..."
+    Add-HALSObservation  -Category "..." -Summary "..."
+    Get-HALSExperiments
+    Get-HALSObservations
+    Get-HALSEvidence
+
+Step 7 — Check what changed on your network
+  After any scan, compare the two most recent snapshots:
+    CompareHALS
+
+  This shows new devices, missing devices, and IP changes
+  since the last run.
+
+
+============================================================
+ FILE LOCATIONS
+============================================================
+
+  Startup script       Start-HALS.ps1
+  Main scan script     HALS.ps1
+  OAuth Gateway        Gateway\HALSGateway.ps1
+  AI configuration     Config\AI.json
+  Device knowledge     Knowledge\Devices.json
+  Provider health      Knowledge\ProviderHealth.json
+  Snapshots            Snapshots\
+  API secrets          Secrets\
+  OAuth tokens         Secrets\OAuth\
+  CSS color database   Data\CSSColors.csv
+  Core modules         Core\
+  AI modules           AI\
+  Provider modules     Providers\
+

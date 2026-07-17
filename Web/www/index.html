@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#58c4dc">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>HALS Control Panel</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <div class="brand">
+        <div class="brand-icon">H</div>
+        <div>
+          <h1>HALS</h1>
+          <p class="subtitle">Home Automation &amp; Logging System</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button id="btn-scan" class="btn btn-primary" title="Run full inventory scan">
+          <span class="btn-icon">↻</span> Scan
+        </button>
+        <span id="connection-status" class="status-pill">Connecting…</span>
+      </div>
+    </header>
+
+    <nav class="nav">
+      <button class="nav-btn active" data-view="dashboard">Dashboard</button>
+      <button class="nav-btn" data-view="devices">Devices</button>
+      <button class="nav-btn" data-view="knowledge">Knowledge</button>
+      <button class="nav-btn" data-view="assistant">AI Assistant</button>
+      <button class="nav-btn" data-view="system">System</button>
+    </nav>
+
+    <main class="main">
+      <!-- Dashboard -->
+      <section id="view-dashboard" class="view active">
+        <div class="stats-grid" id="stats-grid"></div>
+
+        <div class="panel-grid">
+          <div class="panel">
+            <h2>Integrations</h2>
+            <div id="integrations-list" class="integration-list"></div>
+          </div>
+          <div class="panel">
+            <h2>AI Providers</h2>
+            <div id="ai-providers-list" class="integration-list"></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h2>Recent Changes</h2>
+          <div id="changes-summary" class="changes-summary">
+            <p class="muted">Loading snapshot comparison…</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Devices -->
+      <section id="view-devices" class="view">
+        <div class="toolbar">
+          <input type="search" id="device-search" placeholder="Search by name, IP, or MAC…" class="search-input">
+          <select id="device-source-filter" class="select-input">
+            <option value="">All sources</option>
+          </select>
+          <select id="device-category-filter" class="select-input">
+            <option value="">All categories</option>
+          </select>
+          <span id="device-count" class="count-badge">0 devices</span>
+        </div>
+        <div id="devices-grid" class="devices-grid"></div>
+      </section>
+
+      <!-- Knowledge -->
+      <section id="view-knowledge" class="view">
+        <div class="toolbar">
+          <input type="search" id="knowledge-search" placeholder="Search known devices…" class="search-input">
+          <span id="knowledge-count" class="count-badge">0 known</span>
+        </div>
+        <div id="knowledge-list" class="knowledge-list"></div>
+      </section>
+
+      <!-- AI Assistant -->
+      <section id="view-assistant" class="view">
+        <div class="assistant-layout">
+          <div class="panel chat-panel">
+            <div class="chat-header">
+              <h2>Ask HALSAI</h2>
+              <div class="ai-provider-picker">
+                <label for="ai-provider-select" class="muted">Model</label>
+                <select id="ai-provider-select" class="select-input" title="Switch AI provider"></select>
+              </div>
+            </div>
+            <div id="chat-messages" class="chat-messages">
+              <div class="chat-bubble system">
+                Ask questions about your home or give commands in plain English.
+                Action requests will show an execution plan for your approval.
+              </div>
+            </div>
+            <form id="chat-form" class="chat-form">
+              <input type="text" id="chat-input" placeholder="e.g. turn the living room lights blue" autocomplete="off">
+              <button type="submit" class="btn btn-primary">Send</button>
+            </form>
+          </div>
+          <div class="panel quick-panel">
+            <h2>Quick Actions</h2>
+            <div class="quick-actions">
+              <button class="quick-btn" data-prompt="which lights are on right now?">Lights on?</button>
+              <button class="quick-btn" data-prompt="is the front door locked?">Door locked?</button>
+              <button class="quick-btn" data-prompt="turn off all lights">Turn off lights</button>
+              <button class="quick-btn" data-prompt="give me a home status summary">Status summary</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- System -->
+      <section id="view-system" class="view">
+        <div class="panel-grid">
+          <div class="panel">
+            <h2>Server Info</h2>
+            <dl id="server-info" class="info-list"></dl>
+          </div>
+          <div class="panel">
+            <h2>Snapshots</h2>
+            <div id="snapshots-list" class="snapshots-list"></div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Device detail modal -->
+  <div id="device-modal" class="modal hidden">
+    <div class="modal-backdrop" data-close="device-modal"></div>
+    <div class="modal-content modal-wide">
+      <h2 id="device-modal-title">Device</h2>
+      <dl id="device-modal-info" class="info-list"></dl>
+      <h3 class="modal-subtitle">Entities</h3>
+      <div id="device-modal-entities" class="entity-list"></div>
+      <div id="device-modal-actions" class="device-actions"></div>
+      <div class="modal-buttons">
+        <button class="btn btn-ghost" data-close="device-modal">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Plan confirmation modal -->
+  <div id="plan-modal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content">
+      <h2>Execution Plan</h2>
+      <p id="plan-preamble" class="plan-preamble"></p>
+      <div id="plan-actions" class="plan-actions"></div>
+      <div class="modal-buttons">
+        <button id="plan-cancel" class="btn btn-ghost">Cancel</button>
+        <button id="plan-execute" class="btn btn-primary">Execute</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

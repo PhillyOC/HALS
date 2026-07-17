@@ -1,0 +1,27 @@
+{
+  "Provider": "Ollama",
+  "OpenAI": {
+    "ApiKey": "",
+    "Model": "gpt-4o-mini"
+  },
+  "Claude": {
+    "ApiKey": "",
+    "Model": "claude-sonnet-4-5"
+  },
+  "Gemini": {
+    "ApiKey": "",
+    "Model": "gemini-2.5-flash"
+  },
+  "TogetherAI": {
+    "ApiKey": "",
+    "Model": ""
+  },
+  "Mistral": {
+    "ApiKey": "",
+    "Model": ""
+  },
+  "Ollama": {
+    "BaseUrl": "http://localhost:11434",
+    "Model": "llama3.2"
+  }
+}
