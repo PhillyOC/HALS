@@ -253,3 +253,65 @@ Export-ModuleMember `
               Get-PhilipsHueScenes,
               Get-PhilipsHueInventory,
               Set-PhilipsHueLight
+
+function Test-HALSPhilipsHueConfigured {
+
+    $Path = Join-Path (Get-HALSRoot) "Secrets\PhilipsHue.json"
+    if (-not (Test-Path $Path)) { return $false }
+
+    try {
+        $Config = Get-Content $Path -Raw | ConvertFrom-Json
+        return (
+            -not [string]::IsNullOrWhiteSpace($Config.BridgeIp) -and
+            -not [string]::IsNullOrWhiteSpace($Config.Username)
+        )
+    }
+    catch {
+        return $false
+    }
+}
+
+function Initialize-PhilipsHue {
+    if (-not (Get-Command Initialize-HALSPhilipsHue -ErrorAction SilentlyContinue)) {
+        Import-Module (Join-Path (Get-HALSRoot) "Core\Initialize-HALSPhilipsHue.psm1") -Force
+    }
+    Initialize-HALSPhilipsHue
+}
+
+function Invoke-HALSPhilipsHueInventory {
+
+    param([Parameter(Mandatory)]$Knowledge)
+
+    if (-not (Get-Command ConvertTo-HALSPhilipsHueDevice -ErrorAction SilentlyContinue)) {
+        Import-Module (Join-Path (Get-HALSRoot) "Core\HALSPhilipsHueDevice.psm1") -Force
+    }
+
+    $Connection = Connect-PhilipsHue
+    $Raw = @(Get-PhilipsHueInventory -Connection $Connection)
+    $Devices = @($Raw | ForEach-Object {
+        ConvertTo-HALSPhilipsHueDevice -Device $_ -Knowledge $Knowledge
+    })
+
+    [PSCustomObject]@{
+        Devices = $Devices
+        Connection = $Connection
+        Data = $Raw
+    }
+}
+
+Export-ModuleMember -Function `
+    Test-HALSPhilipsHueConfigured,
+    Initialize-PhilipsHue,
+    Invoke-HALSPhilipsHueInventory
+
+if (Get-Command Register-HALSDeviceProvider -ErrorAction SilentlyContinue) {
+    Register-HALSDeviceProvider `
+        -Key "PhilipsHue" `
+        -Name "Philips Hue" `
+        -TestConfiguredCommand "Test-HALSPhilipsHueConfigured" `
+        -InventoryCommand "Invoke-HALSPhilipsHueInventory" `
+        -SetupCommands @(
+            @{ Name = "Initialize-PhilipsHue"; Description = "Set up Philips Hue" }
+        ) `
+        -Order 50
+}

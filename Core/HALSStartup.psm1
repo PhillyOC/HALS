@@ -6,6 +6,10 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
+if (-not (Get-Command Get-HALSAIProviderRegistry -ErrorAction SilentlyContinue)) {
+    Import-Module "$(Get-HALSRoot)\AI\HALSAIProviderRegistry.psm1" -Global
+}
+
 #----------------------------------------------------------
 # Helper
 #----------------------------------------------------------
@@ -30,23 +34,7 @@ function Write-HALSIntegrationsPanel {
     Write-Host (Get-Divider) -ForegroundColor DarkGray
     Write-Host ""
 
-    #
-    # Live providers -- show health status.
-    # The list is defined here in one place so adding a new
-    # device provider makes it appear automatically.
-    #
-
-    $DeviceIntegrations = @(
-        @{ Name = "UniFi";          Key = "UniFi"         }
-        @{ Name = "SmartThings";    Key = "SmartThings"   }
-        @{ Name = "Home Assistant"; Key = "HomeAssistant" }
-        @{ Name = "Google Nest";    Key = "GoogleNest"    }
-        @{ Name = "Philips Hue";    Key = "PhilipsHue"    }
-        @{ Name = "Ecobee";         Key = "Ecobee"        }
-        @{ Name = "Pushbullet";     Key = "Pushbullet"    }
-    )
-
-    foreach ($Integration in $DeviceIntegrations) {
+    foreach ($Integration in @(Get-HALSDeviceProviders)) {
 
         $Entry  = $ProviderHealth[$Integration.Key]
 
@@ -81,24 +69,8 @@ function Write-HALSIntegrationsPanel {
 #----------------------------------------------------------
 # AI Providers Panel
 #
-# Iterates the registered AI providers defined below in
-# $Script:RegisteredAIProviders. The list drives the panel
-# display and is also exported for the switcher and
-# dispatcher modules to use.
+# Iterates the providers exposed by the AI registry.
 #----------------------------------------------------------
-
-$Script:RegisteredAIProviders = @(
-    @{ Name = "OpenAI";         Key = "OpenAI"    }
-    @{ Name = "Claude";         Key = "Claude"    }
-    @{ Name = "Google Gemini";  Key = "Gemini"    }
-    @{ Name = "Together AI";    Key = "TogetherAI"}
-    @{ Name = "Mistral";        Key = "Mistral"   }
-    @{ Name = "Local / Ollama"; Key = "Ollama"    }
-)
-
-function Get-HALSRegisteredAIProviders {
-    $Script:RegisteredAIProviders
-}
 
 function Write-HALSAIPanel {
 
@@ -113,14 +85,26 @@ function Write-HALSAIPanel {
 
     $ActiveProvider = $AIConfiguration.Provider
 
-    foreach ($Provider in (Get-HALSRegisteredAIProviders)) {
+    foreach ($Provider in @(Get-HALSAIProviderRegistry)) {
 
-        $Config = $AIConfiguration.($Provider.Key)
+        $Config = if ($AIConfiguration.PSObject.Properties[$Provider.Key]) {
+            $AIConfiguration.($Provider.Key)
+        }
+        else {
+            $null
+        }
 
-        if ($Config -and -not [string]::IsNullOrWhiteSpace($Config.ApiKey)) {
+        $HasModel = $Config -and
+            $Config.PSObject.Properties["Model"] -and
+            -not [string]::IsNullOrWhiteSpace($Config.Model)
+
+        $Configured = $Config -and
+            (Test-HALSAIProviderConfigured -Provider $Provider.Key -Configuration $Config)
+
+        if ($Configured) {
 
             $IsActive = $ActiveProvider -eq $Provider.Key
-            $Model    = if ($Config.Model) { "  [$($Config.Model)]" } else { "" }
+            $Model    = if ($HasModel) { "  [$($Config.Model)]" } else { "" }
             $Tag      = if ($IsActive) { "  active" } else { "" }
 
             Write-Host ("    [+] " + $Provider.Name.PadRight(22)) -NoNewline -ForegroundColor Green
@@ -158,9 +142,8 @@ function Write-HALSInventorySummary {
     $Devices = @($Inventory.Devices)
 
     #
-    # Domain is only present on HomeAssistant devices.
-    # Guard every Domain access with a PSObject property check
-    # so UniFi and SmartThings devices don't throw under StrictMode.
+    # Domain is optional provider metadata. Guard access so
+    # providers without it remain compatible under StrictMode.
     #
 
     function Get-Domain ($Device) {
@@ -215,8 +198,7 @@ function Write-HALSInventorySummary {
         $Devices | Where-Object {
             $_.Category -eq "Firewall" -or
             $_.Category -eq "Workstation" -or
-            $_.Category -eq "Mobile Phone" -or
-            $_.Source   -eq "UniFi"
+            $_.Category -eq "Mobile Phone"
         }
     ).Count
 
@@ -282,5 +264,4 @@ function Write-HALSInventorySummary {
 Export-ModuleMember `
     -Function Write-HALSIntegrationsPanel,
               Write-HALSAIPanel,
-              Write-HALSInventorySummary,
-              Get-HALSRegisteredAIProviders
+              Write-HALSInventorySummary

@@ -6,6 +6,14 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
+if (-not (Get-Command Get-HALSAIProviderRegistry -ErrorAction SilentlyContinue)) {
+    Import-Module "$(Get-HALSRoot)\AI\HALSAIProviderRegistry.psm1" -Global
+}
+
+if (-not (Get-Command Get-HALSAIConfiguration -ErrorAction SilentlyContinue)) {
+    Import-Module "$(Get-HALSRoot)\AI\AIConfiguration.psm1" -Global
+}
+
 function Ask-HALSAI {
 
     param(
@@ -18,7 +26,15 @@ function Ask-HALSAI {
     # Configuration
     #------------------------------------------------------
 
-    $Configuration = Get-HALSAIConfiguration
+    $Configuration = Get-HALSAIConfiguration -Optional
+
+    if (-not $Configuration) {
+        Write-Host ""
+        Write-Host "AI is not configured yet." -ForegroundColor Yellow
+        Write-Host "Run Initialize-HALSAI to choose and set up a provider." -ForegroundColor DarkGray
+        Write-Host ""
+        return
+    }
 
     #------------------------------------------------------
     # Verify Inventory
@@ -53,63 +69,10 @@ function Ask-HALSAI {
     # AI
     #------------------------------------------------------
 
-    switch ($Configuration.Provider) {
-
-        "OpenAI" {
-
-            $Response = Invoke-OpenAI `
-                -Configuration $Configuration.OpenAI `
-                -Prompt $Prompt
-
-        }
-
-        "Claude" {
-
-            $Response = Invoke-Claude `
-                -Configuration $Configuration.Claude `
-                -Prompt $Prompt
-
-        }
-
-        "Gemini" {
-
-            $Response = Invoke-Gemini `
-                -Configuration $Configuration.Gemini `
-                -Prompt $Prompt
-
-        }
-
-        "TogetherAI" {
-
-            $Response = Invoke-TogetherAI `
-                -Configuration $Configuration.TogetherAI `
-                -Prompt $Prompt
-
-        }
-
-        "Mistral" {
-
-            $Response = Invoke-Mistral `
-                -Configuration $Configuration.Mistral `
-                -Prompt $Prompt
-
-        }
-
-        "Ollama" {
-
-            $Response = Invoke-Ollama `
-                -Configuration $Configuration.Ollama `
-                -Prompt $Prompt
-
-        }
-
-        default {
-
-            throw "Unsupported AI Provider: $($Configuration.Provider)"
-
-        }
-
-    }
+    $Response = Invoke-HALSAIProvider `
+        -Provider $Configuration.Provider `
+        -Configuration $Configuration `
+        -Prompt $Prompt
 
     $Response = $Response.Trim()
 

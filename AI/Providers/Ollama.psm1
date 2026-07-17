@@ -63,6 +63,11 @@ function Invoke-Ollama {
         $BaseUrl = $Configuration.BaseUrl.TrimEnd('/')
     }
 
+    $TimeoutSec = 300
+    if ($Configuration.PSObject.Properties["TimeoutSec"] -and $Configuration.TimeoutSec) {
+        $TimeoutSec = [int]$Configuration.TimeoutSec
+    }
+
     $Uri = "$BaseUrl/v1/chat/completions"
 
     $Headers = @{ "Content-Type" = "application/json" }
@@ -87,7 +92,12 @@ function Invoke-Ollama {
             -Uri $Uri `
             -Headers $Headers `
             -Body $Body `
-            -TimeoutSec 120
+            -TimeoutSec $TimeoutSec
+
+    }
+    catch [System.Threading.Tasks.TaskCanceledException] {
+
+        throw "Ollama did not respond within $TimeoutSec seconds. Try a smaller model or increase Ollama.TimeoutSec in Config\AI.json."
 
     }
     catch [System.Net.Http.HttpRequestException] {

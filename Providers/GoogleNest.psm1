@@ -208,3 +208,69 @@ Export-ModuleMember `
               Get-GoogleNestStructures,
               Get-GoogleNestInventory,
               Invoke-GoogleNestCommand
+
+function Test-HALSGoogleNestConfigured {
+
+    $Path = Join-Path (Get-HALSRoot) "Secrets\OAuth\GoogleNest.json"
+    if (-not (Test-Path $Path)) { return $false }
+
+    try {
+        $Config = Get-Content $Path -Raw | ConvertFrom-Json
+        return (
+            $Config.PSObject.Properties["Authorized"] -and
+            $Config.Authorized -and
+            $Config.PSObject.Properties["ProjectId"] -and
+            -not [string]::IsNullOrWhiteSpace($Config.ProjectId)
+        )
+    }
+    catch {
+        return $false
+    }
+}
+
+function Initialize-GoogleNest {
+    if (-not (Get-Command Initialize-HALSGoogleNestOAuth -ErrorAction SilentlyContinue)) {
+        Import-Module (Join-Path (Get-HALSRoot) "Core\Initialize-HALSGoogleNestOAuth.psm1") -Force
+    }
+    Initialize-HALSGoogleNestOAuth
+}
+
+function Invoke-HALSGoogleNestInventory {
+
+    param([Parameter(Mandatory)]$Knowledge)
+
+    if (-not (Get-Command ConvertTo-HALSGoogleNestDevice -ErrorAction SilentlyContinue)) {
+        Import-Module (Join-Path (Get-HALSRoot) "Core\HALSGoogleNestDevice.psm1") -Force
+    }
+
+    $Config = Get-Content (Join-Path (Get-HALSRoot) "Secrets\OAuth\GoogleNest.json") -Raw |
+        ConvertFrom-Json
+    $Connection = Connect-GoogleNest
+    $Raw = @(Get-GoogleNestInventory -Connection $Connection -ProjectId $Config.ProjectId)
+    $Devices = @($Raw | ForEach-Object {
+        ConvertTo-HALSGoogleNestDevice -Device $_ -Knowledge $Knowledge
+    })
+
+    [PSCustomObject]@{
+        Devices = $Devices
+        Connection = $Connection
+        Data = $Raw
+    }
+}
+
+Export-ModuleMember -Function `
+    Test-HALSGoogleNestConfigured,
+    Initialize-GoogleNest,
+    Invoke-HALSGoogleNestInventory
+
+if (Get-Command Register-HALSDeviceProvider -ErrorAction SilentlyContinue) {
+    Register-HALSDeviceProvider `
+        -Key "GoogleNest" `
+        -Name "Google Nest" `
+        -TestConfiguredCommand "Test-HALSGoogleNestConfigured" `
+        -InventoryCommand "Invoke-HALSGoogleNestInventory" `
+        -SetupCommands @(
+            @{ Name = "Initialize-GoogleNest"; Description = "Set up Google Nest" }
+        ) `
+        -Order 40
+}

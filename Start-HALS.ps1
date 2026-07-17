@@ -33,9 +33,9 @@ Import-Module "$HALSRoot\Core\HALSRoot.psm1" -Force -WarningAction SilentlyConti
 
 Import-Module "$HALSRoot\Core\HALS.psm1"       -Force -WarningAction SilentlyContinue
 Import-Module "$HALSRoot\Core\HALSDevice.psm1" -Force -WarningAction SilentlyContinue
+Import-Module "$HALSRoot\Core\HALSProviderRegistry.psm1" -Force -Global -WarningAction SilentlyContinue
 Import-Module "$HALSRoot\Core\Knowledge.psm1"  -Force -WarningAction SilentlyContinue
 Import-Module "$HALSRoot\Core\Inventory.psm1"  -Force -WarningAction SilentlyContinue
-Import-Module "$HALSRoot\Providers\UniFi.psm1" -Force -WarningAction SilentlyContinue
 
 #----------------------------------------------------------
 # Helper
@@ -79,22 +79,19 @@ function Help {
 
     Write-Host "  -- AI Providers --" -ForegroundColor DarkGray
     Write-Host ("    " + "Initialize-HALSAI".PadRight($CW))             -NoNewline; Write-Host "Choose and set up an AI provider" -ForegroundColor DarkGray
-    Write-Host ("    " + "Initialize-OpenAI".PadRight($CW))             -NoNewline; Write-Host "Set up OpenAI" -ForegroundColor DarkGray
-    Write-Host ("    " + "Initialize-HALSClaude".PadRight($CW))         -NoNewline; Write-Host "Set up Anthropic Claude" -ForegroundColor DarkGray
-    Write-Host ("    " + "Initialize-HALSGemini".PadRight($CW))         -NoNewline; Write-Host "Set up Google Gemini" -ForegroundColor DarkGray
-    Write-Host ("    " + "Initialize-HALSTogetherAI".PadRight($CW))     -NoNewline; Write-Host "Set up Together AI" -ForegroundColor DarkGray
-    Write-Host ("    " + "Initialize-HALSMistral".PadRight($CW))        -NoNewline; Write-Host "Set up Mistral AI" -ForegroundColor DarkGray
-    Write-Host ("    " + "Initialize-HALSOllama".PadRight($CW))         -NoNewline; Write-Host "Set up local Ollama" -ForegroundColor DarkGray
+    foreach ($Provider in @(Get-HALSAIProviderRegistry)) {
+        Write-Host ("    " + $Provider.SetupCommand.PadRight($CW)) -NoNewline
+        Write-Host "Set up $($Provider.Name)" -ForegroundColor DarkGray
+    }
     Write-Host ("    " + "Switch-HALSAIProvider".PadRight($CW))           -NoNewline; Write-Host "Switch active provider (-Provider <name>)" -ForegroundColor DarkGray
     Write-Host ""
 
     Write-Host "  -- Device Integrations --" -ForegroundColor DarkGray
-    Write-Host ("    " + "Initialize-HALSSmartThingsOAuth".PadRight($CW))  -NoNewline; Write-Host "Set up SmartThings OAuth" -ForegroundColor DarkGray
-    Write-Host ("    " + "Complete-HALSSmartThingsOAuth".PadRight($CW))    -NoNewline; Write-Host "Complete SmartThings OAuth manually" -ForegroundColor DarkGray
-    Write-Host ("    " + "Initialize-HALSGoogleNestOAuth".PadRight($CW))   -NoNewline; Write-Host "Set up Google Nest" -ForegroundColor DarkGray
-    Write-Host ("    " + "Initialize-HALSPhilipsHue".PadRight($CW))        -NoNewline; Write-Host "Set up Philips Hue bridge" -ForegroundColor DarkGray
-    Write-Host ("    " + "Initialize-HALSEcobeeOAuth".PadRight($CW))       -NoNewline; Write-Host "Set up Ecobee thermostat" -ForegroundColor DarkGray
-    Write-Host ("    " + "Initialize-HALSPushbullet".PadRight($CW))        -NoNewline; Write-Host "Set up Pushbullet notifications" -ForegroundColor DarkGray
+    Write-Host ("    " + "Initialize-HALSDeviceProvider".PadRight($CW))    -NoNewline; Write-Host "Choose and set up a device provider" -ForegroundColor DarkGray
+    foreach ($Setup in @(Get-HALSDeviceProviderSetupCommands)) {
+        Write-Host ("    " + $Setup.Name.PadRight($CW)) -NoNewline
+        Write-Host $Setup.Description -ForegroundColor DarkGray
+    }
     Write-Host ""
 
     Write-Host "  -- HALSLab --" -ForegroundColor DarkGray
@@ -142,8 +139,6 @@ CompareHALS
 
 Write-Host "  HALS Ready. " -NoNewline -ForegroundColor Cyan
 Write-Host "Type " -NoNewline -ForegroundColor DarkGray
-Write-Host "Ask-HALSAI" -NoNewline -ForegroundColor White
-Write-Host " to get started, or " -NoNewline -ForegroundColor DarkGray
 Write-Host "Help" -NoNewline -ForegroundColor White
-Write-Host " for all commands." -ForegroundColor DarkGray
+Write-Host " to view available commands." -ForegroundColor DarkGray
 Write-Host ""

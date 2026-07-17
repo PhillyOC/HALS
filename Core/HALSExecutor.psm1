@@ -33,43 +33,22 @@ function Invoke-HALSPlan {
         # Validate Command
         #
 
-        $SupportedCommands = @(
-            "TurnOnLight",
-            "TurnOffLight",
-            "ToggleLight",
-            "SetBrightness",
-            "SetColor",
-            "SetColorTemperature",
-            "ActivateSiren",
-            "DeactivateSiren"
-        )
+        $Command = Get-HALSCommands |
+            Where-Object {
+                $_.Provider -eq $Action.Provider -and
+                $_.Name -eq $Action.Command
+            } |
+            Select-Object -First 1
 
-        if ($Action.Command -notin $SupportedCommands) {
-
-            throw "Unknown HALS command: $($Action.Command)"
-
+        if (-not $Command) {
+            throw "Unknown HALS command for provider '$($Action.Provider)': $($Action.Command)"
         }
 
         #
         # Dispatch
         #
 
-        switch ($Action.Provider) {
-
-            "SmartThings" {
-
-                Invoke-SmartThingsAction `
-                    -Action $Action
-
-            }
-
-            default {
-
-                Write-Warning "Unknown provider: $($Action.Provider)"
-
-            }
-
-        }
+        Invoke-HALSRegisteredProviderAction -Action $Action
 
     }
 

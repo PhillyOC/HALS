@@ -174,6 +174,7 @@ function Initialize-HALSOllama {
         ApiKey  = $ApiKey
         Model   = $Model
         BaseUrl = $BaseUrl
+        TimeoutSec = 300
     }
 
     Write-Host "Step 6 : Set Ollama as the active HALSAI provider?" -ForegroundColor Yellow

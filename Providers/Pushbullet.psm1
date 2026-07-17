@@ -227,3 +227,59 @@ Export-ModuleMember `
               Get-PushbulletPushes,
               Send-PushbulletNote,
               Send-PushbulletLink
+
+function Test-HALSPushbulletConfigured {
+
+    $Path = Join-Path (Get-HALSRoot) "Secrets\OAuth\Pushbullet.json"
+    if (-not (Test-Path $Path)) { return $false }
+
+    try {
+        $Config = Get-Content $Path -Raw | ConvertFrom-Json
+        return (
+            ($Config.PSObject.Properties["Authorized"] -and $Config.Authorized) -or
+            ($Config.PSObject.Properties["AccessToken"] -and
+             -not [string]::IsNullOrWhiteSpace($Config.AccessToken))
+        )
+    }
+    catch {
+        return $false
+    }
+}
+
+function Initialize-Pushbullet {
+    if (-not (Get-Command Initialize-HALSPushbullet -ErrorAction SilentlyContinue)) {
+        Import-Module (Join-Path (Get-HALSRoot) "Core\Initialize-HALSPushbullet.psm1") -Force
+    }
+    Initialize-HALSPushbullet
+}
+
+function Invoke-HALSPushbulletInventory {
+
+    param([Parameter(Mandatory)]$Knowledge)
+
+    $Connection = Connect-Pushbullet
+    $Raw = @(Get-PushbulletInventory -Connection $Connection)
+
+    [PSCustomObject]@{
+        Devices = @()
+        Connection = $Connection
+        Data = $Raw
+    }
+}
+
+Export-ModuleMember -Function `
+    Test-HALSPushbulletConfigured,
+    Initialize-Pushbullet,
+    Invoke-HALSPushbulletInventory
+
+if (Get-Command Register-HALSDeviceProvider -ErrorAction SilentlyContinue) {
+    Register-HALSDeviceProvider `
+        -Key "Pushbullet" `
+        -Name "Pushbullet" `
+        -TestConfiguredCommand "Test-HALSPushbulletConfigured" `
+        -InventoryCommand "Invoke-HALSPushbulletInventory" `
+        -SetupCommands @(
+            @{ Name = "Initialize-Pushbullet"; Description = "Set up Pushbullet" }
+        ) `
+        -Order 70
+}

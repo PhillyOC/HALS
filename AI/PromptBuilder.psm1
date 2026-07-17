@@ -76,6 +76,8 @@ EXECUTION RULES
 ==========================================================
 
 * Use ONLY devices, providers, and commands that exist in the inventory below.
+* If no matching device or command exists, say that the required provider or
+  device is not configured. Never infer or advertise an unavailable provider.
 * One action per device per command.
 * Match device names semantically ("living room lights" = Front Bulb 1-3 + Back Bulb 1-3).
 * For creative requests (ocean, sunset, rainbow, etc.) independently choose

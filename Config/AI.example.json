@@ -1,5 +1,5 @@
 {
-  "Provider": "Ollama",
+  "Provider": null,
   "OpenAI": {
     "ApiKey": "",
     "Model": "gpt-4o-mini"
@@ -22,6 +22,7 @@
   },
   "Ollama": {
     "BaseUrl": "http://localhost:11434",
-    "Model": "llama3.2"
+    "Model": "llama3.2",
+    "TimeoutSec": 300
   }
 }

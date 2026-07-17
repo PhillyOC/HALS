@@ -201,3 +201,65 @@ Export-ModuleMember `
               Get-EcobeeThermostats,
               Get-EcobeeInventory,
               Set-EcobeeHvacMode
+
+function Test-HALSEcobeeConfigured {
+
+    $Path = Join-Path (Get-HALSRoot) "Secrets\OAuth\Ecobee.json"
+    if (-not (Test-Path $Path)) { return $false }
+
+    try {
+        $Config = Get-Content $Path -Raw | ConvertFrom-Json
+        return (
+            $Config.PSObject.Properties["Authorized"] -and
+            $Config.Authorized
+        )
+    }
+    catch {
+        return $false
+    }
+}
+
+function Initialize-Ecobee {
+    if (-not (Get-Command Initialize-HALSEcobeeOAuth -ErrorAction SilentlyContinue)) {
+        Import-Module (Join-Path (Get-HALSRoot) "Core\Initialize-HALSEcobeeOAuth.psm1") -Force
+    }
+    Initialize-HALSEcobeeOAuth
+}
+
+function Invoke-HALSEcobeeInventory {
+
+    param([Parameter(Mandatory)]$Knowledge)
+
+    if (-not (Get-Command ConvertTo-HALSEcobeeDevice -ErrorAction SilentlyContinue)) {
+        Import-Module (Join-Path (Get-HALSRoot) "Core\HALSEcobeeDevice.psm1") -Force
+    }
+
+    $Connection = Connect-Ecobee
+    $Raw = @(Get-EcobeeInventory -Connection $Connection)
+    $Devices = @($Raw | ForEach-Object {
+        ConvertTo-HALSEcobeeDevice -Device $_ -Knowledge $Knowledge
+    } | ForEach-Object { $_ })
+
+    [PSCustomObject]@{
+        Devices = $Devices
+        Connection = $Connection
+        Data = $Raw
+    }
+}
+
+Export-ModuleMember -Function `
+    Test-HALSEcobeeConfigured,
+    Initialize-Ecobee,
+    Invoke-HALSEcobeeInventory
+
+if (Get-Command Register-HALSDeviceProvider -ErrorAction SilentlyContinue) {
+    Register-HALSDeviceProvider `
+        -Key "Ecobee" `
+        -Name "Ecobee" `
+        -TestConfiguredCommand "Test-HALSEcobeeConfigured" `
+        -InventoryCommand "Invoke-HALSEcobeeInventory" `
+        -SetupCommands @(
+            @{ Name = "Initialize-Ecobee"; Description = "Set up Ecobee" }
+        ) `
+        -Order 60
+}

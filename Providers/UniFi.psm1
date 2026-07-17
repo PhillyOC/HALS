@@ -126,3 +126,114 @@ function ConvertFrom-UniFiClient {
 }
 
 Export-ModuleMember -Function ConvertFrom-UniFiClient
+
+function Test-HALSUniFiConfigured {
+    $ConfigPath = Join-Path (Get-HALSRoot) "Secrets\UniFi.json"
+    (Test-Path $ConfigPath) -or
+        ($env:HALS_UNIFI_HOST -and $env:HALS_UNIFI_USERNAME -and $env:HALS_UNIFI_PASSWORD)
+}
+
+function Initialize-UniFi {
+
+    $Root = Get-HALSRoot
+    $Folder = Join-Path $Root "Secrets"
+    $Path = Join-Path $Folder "UniFi.json"
+
+    Write-Host ""
+    Write-Host "HALS UniFi setup" -ForegroundColor Cyan
+    Write-Host ""
+
+    $HostName = (Read-Host "Controller host").Trim()
+    $PortText = (Read-Host "Controller port [8443]").Trim()
+    $Site = (Read-Host "Site [default]").Trim()
+    $Username = (Read-Host "Username").Trim()
+    $Password = Read-Host "Password" -MaskInput
+
+    if ([string]::IsNullOrWhiteSpace($HostName) -or
+        [string]::IsNullOrWhiteSpace($Username) -or
+        [string]::IsNullOrWhiteSpace($Password)) {
+        throw "Host, username, and password are required."
+    }
+
+    if ([string]::IsNullOrWhiteSpace($Site)) { $Site = "default" }
+    $Port = if ($PortText) { [int]$PortText } else { 8443 }
+
+    $TestConnection = Connect-UniFi `
+        -Host $HostName `
+        -Port $Port `
+        -Site $Site `
+        -Username $Username `
+        -Password $Password
+
+    if (-not (Test-Path $Folder)) {
+        New-Item -ItemType Directory -Path $Folder -Force | Out-Null
+    }
+
+    @{
+        Host     = $HostName
+        Port     = $Port
+        Site     = $Site
+        Username = $Username
+        Password = $Password
+    } | ConvertTo-Json | Set-Content -Path $Path
+
+    Write-Host ""
+    Write-Host "UniFi connected and configuration saved." -ForegroundColor Green
+    Write-Host ""
+
+    $TestConnection
+}
+
+function Invoke-HALSUniFiInventory {
+
+    param([Parameter(Mandatory)]$Knowledge)
+
+    $Connection = Connect-HALSConfiguredUniFi
+    if (-not $Connection) { return [PSCustomObject]@{ Devices = @() } }
+
+    $Infrastructure = @(Get-UniFiInfrastructure -Session $Connection.Session -Host $Connection.Host)
+    $Clients = @(Get-UniFiClients -Session $Connection.Session -Host $Connection.Host)
+    $Devices = @($Clients | ForEach-Object {
+        ConvertTo-HALSDevice -Device $_ -Source UniFi -Knowledge $Knowledge
+    })
+
+    [PSCustomObject]@{
+        Devices        = $Devices
+        Infrastructure = $Infrastructure
+        Clients        = $Clients
+        Connection     = $Connection
+        Data           = $Clients
+    }
+}
+
+function Get-HALSUniFiPermissions {
+
+    param([Parameter(Mandatory)]$Inventory)
+
+    @(
+        New-HALSPermission -Provider UniFi -Name "Read Clients" -Granted $true
+        New-HALSPermission -Provider UniFi -Name "Read Infrastructure" -Granted $true
+        New-HALSPermission -Provider UniFi -Name "Reconnect Clients" -Granted $false
+        New-HALSPermission -Provider UniFi -Name "Restart Devices" -Granted $false
+        New-HALSPermission -Provider UniFi -Name "Firmware Management" -Granted $false
+    )
+}
+
+Export-ModuleMember -Function `
+    Test-HALSUniFiConfigured,
+    Initialize-UniFi,
+    Invoke-HALSUniFiInventory,
+    Get-HALSUniFiPermissions
+
+if (Get-Command Register-HALSDeviceProvider -ErrorAction SilentlyContinue) {
+    Register-HALSDeviceProvider `
+        -Key "UniFi" `
+        -Name "UniFi" `
+        -TestConfiguredCommand "Test-HALSUniFiConfigured" `
+        -InventoryCommand "Invoke-HALSUniFiInventory" `
+        -PermissionCatalogCommand "Get-HALSUniFiPermissions" `
+        -SetupCommands @(
+            @{ Name = "Initialize-UniFi"; Description = "Set up a UniFi controller" }
+        ) `
+        -Order 10
+}

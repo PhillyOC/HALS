@@ -16,14 +16,15 @@ function Get-HALSAIContext {
     # Build Permission Model
     #------------------------------------------------------
 
-    $Permissions = Get-HALSPermissions `
-        -Inventory $Global:HALSInventory
+    $Permissions = @(
+        Get-HALSPermissions -Inventory $Global:HALSInventory
+    )
 
     #------------------------------------------------------
     # Build Command Model
     #------------------------------------------------------
 
-    $Commands = Get-HALSCommands
+    $Commands = @(Get-HALSCommands)
 
     #------------------------------------------------------
     # Provider Health
@@ -45,7 +46,7 @@ function Get-HALSAIContext {
 
     if (Get-Command Get-HALSKnownDevices -ErrorAction SilentlyContinue) {
 
-        $KnownDevices = Get-HALSKnownDevices
+        $KnownDevices = @(Get-HALSKnownDevices)
 
     }
 
@@ -57,7 +58,7 @@ function Get-HALSAIContext {
 
     if (Get-Command Get-HALSObservations -ErrorAction SilentlyContinue) {
 
-        $Observations = Get-HALSObservations
+        $Observations = @(Get-HALSObservations)
 
     }
 
@@ -69,7 +70,7 @@ function Get-HALSAIContext {
 
     if (Get-Command Get-HALSEvidence -ErrorAction SilentlyContinue) {
 
-        $Evidence = Get-HALSEvidence
+        $Evidence = @(Get-HALSEvidence)
 
     }
 
@@ -81,7 +82,7 @@ function Get-HALSAIContext {
 
     if (Get-Command Get-HALSExperiments -ErrorAction SilentlyContinue) {
 
-        $Experiments = Get-HALSExperiments
+        $Experiments = @(Get-HALSExperiments)
 
     }
 

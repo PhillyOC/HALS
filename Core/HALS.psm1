@@ -130,13 +130,13 @@ function Compare-HALSSnapshots {
         if (-not $PreviousByMAC.ContainsKey($Device.MAC)) {
 
             #
-            # Only report new devices that are worth reporting:
-            # skip HA non-physical entities (no IP, Source = HomeAssistant,
-            # and domain not in the wizard domain list).
+            # Skip provider entities that expose a non-controllable domain
+            # but no network identity.
             #
             if (
-                $Device.Source -eq "HomeAssistant" -and
-                [string]::IsNullOrWhiteSpace($Device.IP) -and
+                $Device.PSObject.Properties["Domain"] -and
+                (-not $Device.PSObject.Properties["IP"] -or
+                 [string]::IsNullOrWhiteSpace($Device.IP)) -and
                 $Device.Domain -notin $WizardDomains
             ) {
                 $PreviousByMAC.Remove($Device.MAC)
@@ -170,11 +170,12 @@ function Compare-HALSSnapshots {
     foreach ($Device in $PreviousByMAC.Values) {
 
         #
-        # Same filter: don't report missing HA non-physical entities.
+        # Same generic filter for non-physical provider entities.
         #
         if (
-            $Device.Source -eq "HomeAssistant" -and
-            [string]::IsNullOrWhiteSpace($Device.IP) -and
+            $Device.PSObject.Properties["Domain"] -and
+            (-not $Device.PSObject.Properties["IP"] -or
+             [string]::IsNullOrWhiteSpace($Device.IP)) -and
             $Device.Domain -notin $WizardDomains
         ) {
             continue
@@ -206,9 +207,7 @@ function Invoke-HALSDiscovery {
     $Unknown = @(
         $Devices | Where-Object {
             -not $_.Known -and (
-                # Non-HA devices always go through the wizard
-                $_.Source -ne "HomeAssistant" -or
-                # HA devices only if they are a controllable domain
+                -not $_.PSObject.Properties["Domain"] -or
                 $WizardDomains -contains $_.Domain
             )
         }

@@ -6,109 +6,50 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
+if (-not (Get-Command Get-HALSAIProviderRegistry -ErrorAction SilentlyContinue)) {
+    Import-Module "$(Get-HALSRoot)\AI\HALSAIProviderRegistry.psm1" -Global
+}
+
 function Get-HALSAIConfiguration {
 
-    $Path = "$(Get-HALSRoot)\Config\AI.json"
+    param(
+        [switch]$Optional
+    )
 
-    if (-not (Test-Path $Path)) {
-        throw "AI configuration file not found: $Path"
+    $Configuration = Import-HALSAIConfiguration -Optional:$Optional
+    if (-not $Configuration) {
+        return $null
     }
 
-    $Configuration = Get-Content -Path $Path -Raw | ConvertFrom-Json
-
-    if (-not $Configuration.Provider) {
+    if (-not $Configuration.PSObject.Properties["Provider"] -or
+        [string]::IsNullOrWhiteSpace([string]$Configuration.Provider)) {
+        if ($Optional) {
+            return $null
+        }
         throw "AI configuration is missing the Provider property."
     }
 
-    switch ($Configuration.Provider) {
+    $Provider = Get-HALSAIProvider -Provider $Configuration.Provider
+    $Section = if ($Configuration.PSObject.Properties[$Provider.Key]) {
+        $Configuration.($Provider.Key)
+    }
+    else {
+        $null
+    }
 
-        "OpenAI" {
+    if (-not $Section) {
+        throw "$($Provider.Name) configuration section missing. Run $($Provider.SetupCommand)."
+    }
 
-            if (-not $Configuration.OpenAI) {
-                throw "OpenAI configuration section missing. Run Initialize-OpenAI."
-            }
-            if (-not $Configuration.OpenAI.ApiKey) {
-                throw "OpenAI ApiKey missing. Run Initialize-OpenAI."
-            }
-            if (-not $Configuration.OpenAI.Model) {
-                throw "OpenAI Model missing. Run Initialize-OpenAI."
-            }
+    if (-not (Test-HALSAIProviderConfigured -Provider $Provider.Key -Configuration $Section)) {
+        $MissingSetting = if (
+            $Provider.RequiresApiKey -and (
+                -not $Section.PSObject.Properties["ApiKey"] -or
+                [string]::IsNullOrWhiteSpace([string]$Section.ApiKey)
+            )
+        ) { "ApiKey" } else { "Model" }
 
-        }
-
-        "Claude" {
-
-            if (-not $Configuration.Claude) {
-                throw "Claude configuration section missing. Run Initialize-HALSClaude."
-            }
-            if (-not $Configuration.Claude.ApiKey) {
-                throw "Claude ApiKey missing. Run Initialize-HALSClaude."
-            }
-            if (-not $Configuration.Claude.Model) {
-                throw "Claude Model missing. Run Initialize-HALSClaude."
-            }
-
-        }
-
-        "Gemini" {
-
-            if (-not $Configuration.Gemini) {
-                throw "Gemini configuration section missing. Run Initialize-HALSGemini."
-            }
-            if (-not $Configuration.Gemini.ApiKey) {
-                throw "Gemini ApiKey missing. Run Initialize-HALSGemini."
-            }
-            if (-not $Configuration.Gemini.Model) {
-                throw "Gemini Model missing. Run Initialize-HALSGemini."
-            }
-
-        }
-
-        "TogetherAI" {
-
-            if (-not $Configuration.TogetherAI) {
-                throw "TogetherAI configuration section missing. Run Initialize-HALSTogetherAI."
-            }
-            if (-not $Configuration.TogetherAI.ApiKey) {
-                throw "TogetherAI ApiKey missing. Run Initialize-HALSTogetherAI."
-            }
-            if (-not $Configuration.TogetherAI.Model) {
-                throw "TogetherAI Model missing. Run Initialize-HALSTogetherAI."
-            }
-
-        }
-
-        "Mistral" {
-
-            if (-not $Configuration.Mistral) {
-                throw "Mistral configuration section missing. Run Initialize-HALSMistral."
-            }
-            if (-not $Configuration.Mistral.ApiKey) {
-                throw "Mistral ApiKey missing. Run Initialize-HALSMistral."
-            }
-            if (-not $Configuration.Mistral.Model) {
-                throw "Mistral Model missing. Run Initialize-HALSMistral."
-            }
-
-        }
-
-        "Ollama" {
-
-            if (-not $Configuration.Ollama) {
-                throw "Ollama configuration section missing. Run Initialize-HALSOllama."
-            }
-            if (-not $Configuration.Ollama.Model) {
-                throw "Ollama Model missing. Run Initialize-HALSOllama."
-            }
-
-        }
-
-        default {
-
-            throw "Unsupported AI Provider: '$($Configuration.Provider)'. Valid values: OpenAI, Claude, Gemini, TogetherAI, Mistral, Ollama."
-
-        }
-
+        throw "$($Provider.Name) $MissingSetting missing. Run $($Provider.SetupCommand)."
     }
 
     return $Configuration

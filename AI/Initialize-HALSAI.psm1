@@ -6,6 +6,10 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
+if (-not (Get-Command Get-HALSAIProviderRegistry -ErrorAction SilentlyContinue)) {
+    Import-Module "$(Get-HALSRoot)\AI\HALSAIProviderRegistry.psm1" -Global
+}
+
 function Initialize-OpenAI {
 
     $ConfigPath = "$(Get-HALSRoot)\Config\AI.json"
@@ -33,7 +37,8 @@ function Initialize-OpenAI {
 
     try {
 
-        $Result = Invoke-OpenAI `
+        $Result = Invoke-HALSAIProvider `
+            -Provider "OpenAI" `
             -Configuration $OpenAIConfiguration `
             -Prompt "Reply with exactly: HALSAI initialization successful."
 
@@ -90,34 +95,36 @@ function Initialize-OpenAI {
 
 function Initialize-HALSAI {
 
+    $Providers = @(Get-HALSAIProviderRegistry)
+
     Write-Host ""
     Write-Host "HALSAI provider setup" -ForegroundColor Cyan
     Write-Host ""
-    Write-Host "  [1] OpenAI" -ForegroundColor White
-    Write-Host "  [2] Anthropic Claude" -ForegroundColor White
-    Write-Host "  [3] Google Gemini" -ForegroundColor White
-    Write-Host "  [4] Together AI" -ForegroundColor White
-    Write-Host "  [5] Mistral" -ForegroundColor White
-    Write-Host "  [6] Local Ollama" -ForegroundColor White
-    Write-Host ""
 
-    $Command = switch ((Read-Host "Choose a provider [1-6]").Trim()) {
-        "1" { "Initialize-OpenAI" }
-        "2" { "Initialize-HALSClaude" }
-        "3" { "Initialize-HALSGemini" }
-        "4" { "Initialize-HALSTogetherAI" }
-        "5" { "Initialize-HALSMistral" }
-        "6" { "Initialize-HALSOllama" }
-        default { $null }
+    for ($Index = 0; $Index -lt $Providers.Count; $Index++) {
+        Write-Host "  [$($Index + 1)] $($Providers[$Index].Name)" -ForegroundColor White
     }
 
-    if (-not $Command) {
+    Write-Host ""
+
+    $SelectionText = (Read-Host "Choose a provider [1-$($Providers.Count)]").Trim()
+    $Selection = 0
+
+    if (-not [int]::TryParse($SelectionText, [ref]$Selection) -or
+        $Selection -lt 1 -or
+        $Selection -gt $Providers.Count) {
         Write-Host "Invalid provider selection." -ForegroundColor Yellow
         return $false
     }
 
+    $Command = $Providers[$Selection - 1].SetupCommand
+
     if (-not (Get-Command $Command -ErrorAction SilentlyContinue)) {
-        throw "Provider setup command is unavailable: $Command"
+        Import-HALSAIProvider -Provider $Providers[$Selection - 1].Key -Setup
+    }
+
+    if (-not (Get-Command $Command -ErrorAction SilentlyContinue)) {
+        throw "Provider setup command is unavailable after module import: $Command"
     }
 
     & $Command

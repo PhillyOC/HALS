@@ -145,6 +145,28 @@ function ConvertTo-HALSProviderCommand {
 
         }
 
+        "ActivateSiren" {
+
+            return [PSCustomObject]@{
+                Provider   = "SmartThings"
+                Capability = "alarm"
+                Command    = "siren"
+                Arguments  = @()
+            }
+
+        }
+
+        "DeactivateSiren" {
+
+            return [PSCustomObject]@{
+                Provider   = "SmartThings"
+                Capability = "alarm"
+                Command    = "off"
+                Arguments  = @()
+            }
+
+        }
+
         default {
 
             throw "Unknown HALS command: $($Action.Command)"

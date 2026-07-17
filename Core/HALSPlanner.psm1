@@ -11,6 +11,7 @@ function New-HALSPlan {
     param(
 
         [Parameter(Mandatory)]
+        [AllowEmptyCollection()]
         [Object[]]$Actions
 
     )

@@ -1,6 +1,6 @@
 # HALS
 
-HALS (Home Automation & Logging System) is a PowerShell 7 application that inventories and controls smart-home devices through UniFi, SmartThings, Home Assistant, Google Nest, Philips Hue, Ecobee, and Pushbullet. It includes an interactive console, a local web control panel, and optional AI providers.
+HALS (Home Automation & Logging System) is a PowerShell 7 application that inventories and controls smart-home devices through optional provider modules, including UniFi, SmartThings, Home Assistant, Google Nest, Philips Hue, WiZ Pro, Ecobee, and Pushbullet. It includes an interactive console, a local web control panel, and optional AI providers.
 
 ## Requirements
 
@@ -46,6 +46,10 @@ The web API can scan networks and control devices and does not currently provide
 - `Knowledge\` and `Snapshots\` contain private runtime device and network data.
 
 Example files contain placeholders only. Keep local files at their non-`.example` names so `.gitignore` excludes them.
+
+### WiZ Pro example integration
+
+Run `Initialize-WiZ` (or choose WiZ Pro from `Initialize-HALSDeviceProvider`) and enter the client ID and redirect URI registered with [WiZ Pro](https://docs.pro.wizconnected.com/#introduction). HALS opens the OAuth-PKCE authorization page, stores the resulting tokens in `Secrets\OAuth\WiZ.json`, inventories the authorized building topology, and exposes supported light operations to HALSAI. WiZ Pro credentials are issued by WiZ; this official cloud integration is separate from the undocumented consumer-bulb LAN protocol.
 
 ## Security
 

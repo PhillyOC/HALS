@@ -240,3 +240,104 @@ Export-ModuleMember `
               Get-HAServices,
               Get-HomeAssistantInventory,
               Invoke-HAService
+
+function Test-HALSHomeAssistantConfigured {
+
+    $Path = Join-Path (Get-HALSRoot) "Secrets\HomeAssistant.json"
+    if (-not (Test-Path $Path)) { return $false }
+
+    try {
+        $Config = Get-Content $Path -Raw | ConvertFrom-Json
+        return (
+            -not [string]::IsNullOrWhiteSpace($Config.Host) -and
+            $null -ne $Config.Port -and
+            -not [string]::IsNullOrWhiteSpace($Config.Token)
+        )
+    }
+    catch {
+        return $false
+    }
+}
+
+function Initialize-HomeAssistant {
+
+    Write-Host ""
+    Write-Host "HALS Home Assistant setup" -ForegroundColor Cyan
+    Write-Host ""
+
+    $HostName = (Read-Host "Home Assistant host [homeassistant.local]").Trim()
+    $PortText = (Read-Host "Port [8123]").Trim()
+    $UseSsl = (Read-Host "Use HTTPS? (Y/N) [N]").Trim()
+    $Token = (Read-Host "Long-lived access token" -MaskInput).Trim()
+
+    if ([string]::IsNullOrWhiteSpace($HostName)) { $HostName = "homeassistant.local" }
+    $Port = if ($PortText) { [int]$PortText } else { 8123 }
+    $Ssl = $UseSsl -match "^[Yy]"
+
+    if ([string]::IsNullOrWhiteSpace($Token)) {
+        throw "Home Assistant token cannot be empty."
+    }
+
+    $TestConfig = @{
+        Host = $HostName
+        Port = $Port
+        SSL = $Ssl
+        Headers = @{ Authorization = "Bearer $Token"; Accept = "application/json" }
+    }
+    $null = Get-HAConfig -Connection $TestConfig
+
+    $Folder = Join-Path (Get-HALSRoot) "Secrets"
+    if (-not (Test-Path $Folder)) {
+        New-Item -ItemType Directory -Path $Folder -Force | Out-Null
+    }
+
+    @{
+        Host = $HostName
+        Port = $Port
+        SSL = $Ssl
+        Token = $Token
+    } | ConvertTo-Json | Set-Content -Path (Join-Path $Folder "HomeAssistant.json")
+
+    Write-Host ""
+    Write-Host "Home Assistant connected and configuration saved." -ForegroundColor Green
+    Write-Host ""
+}
+
+function Invoke-HALSHomeAssistantInventory {
+
+    param([Parameter(Mandatory)]$Knowledge)
+
+    if (-not (Get-Command ConvertTo-HALSHomeAssistantDevice -ErrorAction SilentlyContinue)) {
+        Import-Module (Join-Path (Get-HALSRoot) "Core\HALSHomeAssistantDevice.psm1") -Force
+    }
+
+    $Connection = Connect-HomeAssistant
+    $Global:HALSHomeAssistantConnection = $Connection
+    $Raw = @(Get-HomeAssistantInventory -Connection $Connection)
+    $Devices = @($Raw | ForEach-Object {
+        ConvertTo-HALSHomeAssistantDevice -Device $_ -Knowledge $Knowledge
+    })
+
+    [PSCustomObject]@{
+        Devices = $Devices
+        Connection = $Connection
+        Data = $Raw
+    }
+}
+
+Export-ModuleMember -Function `
+    Test-HALSHomeAssistantConfigured,
+    Initialize-HomeAssistant,
+    Invoke-HALSHomeAssistantInventory
+
+if (Get-Command Register-HALSDeviceProvider -ErrorAction SilentlyContinue) {
+    Register-HALSDeviceProvider `
+        -Key "HomeAssistant" `
+        -Name "Home Assistant" `
+        -TestConfiguredCommand "Test-HALSHomeAssistantConfigured" `
+        -InventoryCommand "Invoke-HALSHomeAssistantInventory" `
+        -SetupCommands @(
+            @{ Name = "Initialize-HomeAssistant"; Description = "Set up Home Assistant" }
+        ) `
+        -Order 30
+}

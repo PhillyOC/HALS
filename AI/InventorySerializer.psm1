@@ -15,7 +15,7 @@ function ConvertTo-HALSAIInventory {
 
     )
 
-    $Assets = foreach ($Asset in $Inventory.Assets) {
+    $Assets = @(foreach ($Asset in @($Inventory.Assets)) {
 
         #
         # Status
@@ -136,7 +136,7 @@ function ConvertTo-HALSAIInventory {
 
         }
 
-    }
+    })
 
     #
     # AI Inventory

@@ -15,76 +15,7 @@ function Get-HALSPermissions {
 
     )
 
-    $Permissions = @()
-
-    #
-    # SmartThings
-    #
-
-    if ($Inventory.SmartThings) {
-
-        $Permissions += New-HALSPermission `
-            -Provider SmartThings `
-            -Name "Read Devices" `
-            -Granted $true `
-            -Description "Read SmartThings devices."
-
-        $Permissions += New-HALSPermission `
-            -Provider SmartThings `
-            -Name "Read Rooms" `
-            -Granted $true
-
-        $Permissions += New-HALSPermission `
-            -Provider SmartThings `
-            -Name "Execute Commands" `
-            -Granted $true
-
-        $Permissions += New-HALSPermission `
-            -Provider SmartThings `
-            -Name "Firmware Management" `
-            -Granted $false
-
-        $Permissions += New-HALSPermission `
-            -Provider SmartThings `
-            -Name "Driver Management" `
-            -Granted $false
-
-    }
-
-    #
-    # UniFi
-    #
-
-    if ($Inventory.Clients) {
-
-        $Permissions += New-HALSPermission `
-            -Provider UniFi `
-            -Name "Read Clients" `
-            -Granted $true
-
-        $Permissions += New-HALSPermission `
-            -Provider UniFi `
-            -Name "Read Infrastructure" `
-            -Granted $true
-
-        $Permissions += New-HALSPermission `
-            -Provider UniFi `
-            -Name "Reconnect Clients" `
-            -Granted $false
-
-        $Permissions += New-HALSPermission `
-            -Provider UniFi `
-            -Name "Restart Devices" `
-            -Granted $false
-
-        $Permissions += New-HALSPermission `
-            -Provider UniFi `
-            -Name "Firmware Management" `
-            -Granted $false
-
-    }
-
-    return $Permissions
+    Get-HALSRegisteredProviderPermissions -Inventory $Inventory
 
 }
 

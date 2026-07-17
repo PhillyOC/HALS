@@ -32,20 +32,18 @@ function Initialize-HALSWebModules {
     $Root = Get-HALSRoot
 
     $CoreModules = @(
-        "HALSDevice.psm1", "HALSColor.psm1", "HALSSmartThingsDevice.psm1",
-        "HALSHomeAssistantDevice.psm1", "HALSGoogleNestDevice.psm1",
-        "HALSPhilipsHueDevice.psm1", "HALSEcobeeDevice.psm1",
+        "HALSProviderRegistry.psm1", "HALSDevice.psm1", "HALSColor.psm1",
         "HALSKnowledgeBase.psm1", "HALSJsonStore.psm1", "HALSExperiment.psm1",
         "HALSObservation.psm1", "HALSProviderHealth.psm1", "HALSEvidence.psm1",
         "HALSLab.psm1", "HALSOAuth.psm1", "HALSOAuthToken.psm1",
-        "HALS.psm1", "Merge.psm1", "Inventory.psm1", "Knowledge.psm1",
+        "HALS.psm1", "Inventory.psm1", "Knowledge.psm1",
         "HALSEntity.psm1", "HALSAsset.psm1", "HALSAssetMerge.psm1",
         "IdentityResolver.psm1", "EntityClassification.psm1", "EntityQuery.psm1",
         "HALSCapability.psm1", "Status.psm1", "CapabilityDiscovery.psm1",
         "CapabilityQuery.psm1", "HALSPermission.psm1", "PermissionDiscovery.psm1",
         "HALSAction.psm1", "HALSPlanner.psm1", "HALSPolicy.psm1",
         "HALSExecutor.psm1", "HALSCommand.psm1", "CommandDiscovery.psm1",
-        "HALSCommandTranslator.psm1", "HALSStartup.psm1"
+        "HALSStartup.psm1"
     )
 
     foreach ($Module in $CoreModules) {
@@ -53,10 +51,8 @@ function Initialize-HALSWebModules {
     }
 
     $AIModules = @(
-        "AIConfiguration.psm1", "InventorySerializer.psm1", "ContextBuilder.psm1",
+        "HALSAIProviderRegistry.psm1", "AIConfiguration.psm1", "InventorySerializer.psm1", "ContextBuilder.psm1",
         "PromptBuilder.psm1", "Initialize-HALSAI.psm1",
-        "Providers\OpenAI.psm1", "Providers\Claude.psm1", "Providers\Gemini.psm1",
-        "Providers\TogetherAI.psm1", "Providers\Mistral.psm1", "Providers\Ollama.psm1",
         "PlanParser.psm1", "ExecutionDetector.psm1", "HALSAI.psm1", "HALSAIProvider.psm1"
     )
 
@@ -65,9 +61,9 @@ function Initialize-HALSWebModules {
     }
 
     $Providers = @(
-        "UniFi.psm1", "SmartThings.psm1", "HomeAssistant.psm1",
-        "SmartThingsActions.psm1", "GoogleNest.psm1", "PhilipsHue.psm1",
-        "Ecobee.psm1", "Pushbullet.psm1"
+        Get-ChildItem (Join-Path $Root "Providers") -Filter "*.psm1" |
+            Sort-Object Name |
+            Select-Object -ExpandProperty Name
     )
 
     foreach ($Module in $Providers) {
@@ -104,7 +100,7 @@ function Ensure-HALSWebCommands {
         "ConvertTo-HALSAIInventory" = "AI\InventorySerializer.psm1"
         "Get-HALSAIContext"       = "AI\ContextBuilder.psm1"
         "Switch-HALSAIProvider"   = "AI\HALSAIProvider.psm1"
-        "Get-HALSRegisteredAIProviders" = "Core\HALSStartup.psm1"
+        "Get-HALSRegisteredAIProviders" = "AI\HALSAIProviderRegistry.psm1"
     }
 
     foreach ($Command in $Commands) {
@@ -196,18 +192,6 @@ function Ensure-HALSWebInventoryComplete {
         }
     }
 
-    if (-not $Inventory.PSObject.Properties["SmartThings"]) {
-        $Inventory | Add-Member -NotePropertyName SmartThings -NotePropertyValue @(
-            $Devices | Where-Object { $_.Source -eq "SmartThings" }
-        ) -Force
-    }
-
-    if (-not $Inventory.PSObject.Properties["HomeAssistant"]) {
-        $Inventory | Add-Member -NotePropertyName HomeAssistant -NotePropertyValue @(
-            $Devices | Where-Object { $_.Source -eq "HomeAssistant" }
-        ) -Force
-    }
-
     $Global:HALSInventory = $Inventory
 
     if (-not $Inventory.PSObject.Properties["Knowledge"]) {
@@ -217,32 +201,7 @@ function Ensure-HALSWebInventoryComplete {
 }
 
 function Ensure-HALSWebConnections {
-
-    $Root = Get-HALSRoot
-    $SmartThingsConfigured =
-        (Test-Path (Join-Path $Root "Secrets\SmartThings.json")) -or
-        (Test-Path (Join-Path $Root "Secrets\OAuth\SmartThings.json"))
-
-    if ($SmartThingsConfigured -and -not (Test-Path variable:global:HALSSmartThingsConnection)) {
-        try {
-            $Global:HALSSmartThingsConnection = Connect-SmartThings
-        }
-        catch { }
-    }
-
-    $HomeAssistantConfigured = Test-Path (Join-Path $Root "Secrets\HomeAssistant.json")
-
-    if ($HomeAssistantConfigured -and -not (Test-Path variable:global:HALSHomeAssistantConnection)) {
-        try {
-            $Global:HALSHomeAssistantConnection = Connect-HomeAssistant
-        }
-        catch { }
-    }
-}
-
-function Get-HALSWebConnection {
-
-    Connect-HALSConfiguredUniFi
+    # Provider action handlers establish connections on demand.
 }
 
 #----------------------------------------------------------
@@ -343,15 +302,7 @@ function Get-HALSWebStatus {
 
     $ProviderHealth = Get-HALSProviderHealth
 
-    $Integrations = @(
-        @{ Name = "UniFi";          Key = "UniFi"         }
-        @{ Name = "SmartThings";    Key = "SmartThings"   }
-        @{ Name = "Home Assistant"; Key = "HomeAssistant" }
-        @{ Name = "Google Nest";    Key = "GoogleNest"    }
-        @{ Name = "Philips Hue";    Key = "PhilipsHue"    }
-        @{ Name = "Ecobee";         Key = "Ecobee"        }
-        @{ Name = "Pushbullet";     Key = "Pushbullet"    }
-    ) | ForEach-Object {
+    $Integrations = @(Get-HALSDeviceProviders) | ForEach-Object {
         $Entry = $ProviderHealth[$_.Key]
         @{
             Name    = $_.Name
@@ -365,29 +316,33 @@ function Get-HALSWebStatus {
     $AIProviders = @()
 
     try {
-        $AIConfig = Get-HALSAIConfiguration
-        $AI = @{
-            Active = $AIConfig.Provider
-            Model  = $AIConfig.($AIConfig.Provider).Model
+        $AIConfig = Get-HALSAIConfiguration -Optional
+
+        if ($AIConfig) {
+            $ActiveConfig = $AIConfig.($AIConfig.Provider)
+            $AI = @{
+                Active = $AIConfig.Provider
+                Model  = if ($ActiveConfig.PSObject.Properties["Model"]) { $ActiveConfig.Model } else { "" }
+            }
+        }
+        else {
+            $AI = @{ Active = $null; Model = $null }
         }
 
-        foreach ($Provider in (Get-HALSRegisteredAIProviders)) {
-            $Cfg = $AIConfig.($Provider.Key)
-            $Configured = $false
-            if ($Cfg) {
-                if ($Provider.Key -eq "Ollama") {
-                    $Configured = -not [string]::IsNullOrWhiteSpace($Cfg.Model)
-                }
-                else {
-                    $Configured = -not [string]::IsNullOrWhiteSpace($Cfg.ApiKey)
-                }
+        foreach ($Provider in @(Get-HALSAIProviderRegistry)) {
+            $Cfg = if ($AIConfig -and $AIConfig.PSObject.Properties[$Provider.Key]) {
+                $AIConfig.($Provider.Key)
             }
+            else { $null }
+            $Configured = $Cfg -and (
+                Test-HALSAIProviderConfigured -Provider $Provider.Key -Configuration $Cfg
+            )
             $AIProviders += @{
                 Name     = $Provider.Name
                 Key      = $Provider.Key
-                Active   = $AIConfig.Provider -eq $Provider.Key
+                Active   = $AIConfig -and $AIConfig.Provider -eq $Provider.Key
                 Configured = $Configured
-                Model    = if ($Cfg -and $Cfg.Model) { $Cfg.Model } else { "" }
+                Model    = if ($Cfg -and $Cfg.PSObject.Properties["Model"]) { $Cfg.Model } else { "" }
             }
         }
     }
@@ -478,8 +433,7 @@ function Invoke-HALSWebScan {
     Initialize-HALSWebModules
     Ensure-HALSWebCommands @("Get-HALSKnowledge", "Get-HALSInventory", "Save-HALSSnapshot")
 
-    $Connection = Get-HALSWebConnection
-    $Inventory  = Get-HALSInventory -Connection $Connection
+    $Inventory = Get-HALSInventory
 
     $Global:HALSInventory = $Inventory
     Ensure-HALSWebInventoryComplete
@@ -534,8 +488,9 @@ function Compare-HALSWebSnapshots {
 
         if (-not $PreviousByMAC.ContainsKey($Device.MAC)) {
 
-            if ($Device.Source -eq "HomeAssistant" -and
-                [string]::IsNullOrWhiteSpace($Device.IP) -and
+            if ($Device.PSObject.Properties["Domain"] -and
+                (-not $Device.PSObject.Properties["IP"] -or
+                 [string]::IsNullOrWhiteSpace($Device.IP)) -and
                 $Device.Domain -notin $WizardDomains) {
                 $PreviousByMAC.Remove($Device.MAC)
                 continue
@@ -562,8 +517,9 @@ function Compare-HALSWebSnapshots {
 
     foreach ($Device in $PreviousByMAC.Values) {
 
-        if ($Device.Source -eq "HomeAssistant" -and
-            [string]::IsNullOrWhiteSpace($Device.IP) -and
+        if ($Device.PSObject.Properties["Domain"] -and
+            (-not $Device.PSObject.Properties["IP"] -or
+             [string]::IsNullOrWhiteSpace($Device.IP)) -and
             $Device.Domain -notin $WizardDomains) {
             continue
         }
@@ -659,22 +615,23 @@ function Invoke-HALSWebAI {
         throw "HALS inventory is missing Assets. Run a scan to rebuild inventory."
     }
 
-    $Configuration = Get-HALSAIConfiguration
+    $Configuration = Get-HALSAIConfiguration -Optional
+    if (-not $Configuration) {
+        return @{
+            Type = "unconfigured"
+            Message = "AI is not configured. Run Initialize-HALSAI to choose a provider."
+            Provider = $null
+        }
+    }
 
     $Global:HALSAIInventory = ConvertTo-HALSAIInventory -Inventory $Inventory
     $Context = Get-HALSAIContext
     $Prompt  = New-HALSAIPrompt -Context $Context -Question $Question
 
-    switch ($Configuration.Provider) {
-
-        "OpenAI"     { $Response = Invoke-OpenAI     -Configuration $Configuration.OpenAI     -Prompt $Prompt }
-        "Claude"     { $Response = Invoke-Claude     -Configuration $Configuration.Claude     -Prompt $Prompt }
-        "Gemini"     { $Response = Invoke-Gemini     -Configuration $Configuration.Gemini     -Prompt $Prompt }
-        "TogetherAI" { $Response = Invoke-TogetherAI -Configuration $Configuration.TogetherAI -Prompt $Prompt }
-        "Mistral"    { $Response = Invoke-Mistral    -Configuration $Configuration.Mistral    -Prompt $Prompt }
-        "Ollama"     { $Response = Invoke-Ollama      -Configuration $Configuration.Ollama     -Prompt $Prompt }
-        default      { throw "Unsupported AI Provider: $($Configuration.Provider)" }
-    }
+    $Response = Invoke-HALSAIProvider `
+        -Provider $Configuration.Provider `
+        -Configuration $Configuration `
+        -Prompt $Prompt
 
     $Response = $Response.Trim()
 
@@ -727,25 +684,22 @@ function Get-HALSWebAIProviders {
     Initialize-HALSWebModules
     Ensure-HALSWebCommands @("Get-HALSAIConfiguration", "Get-HALSRegisteredAIProviders")
 
-    $AIConfig = Get-HALSAIConfiguration
+    $AIConfig = Get-HALSAIConfiguration -Optional
 
-    @(Get-HALSRegisteredAIProviders | ForEach-Object {
-        $Cfg = $AIConfig.($_.Key)
-        $Configured = $false
-        if ($Cfg) {
-            if ($_.Key -eq "Ollama") {
-                $Configured = -not [string]::IsNullOrWhiteSpace($Cfg.Model)
-            }
-            else {
-                $Configured = -not [string]::IsNullOrWhiteSpace($Cfg.ApiKey)
-            }
+    @(Get-HALSAIProviderRegistry | ForEach-Object {
+        $Cfg = if ($AIConfig -and $AIConfig.PSObject.Properties[$_.Key]) {
+            $AIConfig.($_.Key)
         }
+        else { $null }
+        $Configured = $Cfg -and (
+            Test-HALSAIProviderConfigured -Provider $_.Key -Configuration $Cfg
+        )
         @{
             Name       = $_.Name
             Key        = $_.Key
-            Active     = $AIConfig.Provider -eq $_.Key
+            Active     = $AIConfig -and $AIConfig.Provider -eq $_.Key
             Configured = $Configured
-            Model      = if ($Cfg -and $Cfg.Model) { $Cfg.Model } else { "" }
+            Model      = if ($Cfg -and $Cfg.PSObject.Properties["Model"]) { $Cfg.Model } else { "" }
         }
     })
 }
