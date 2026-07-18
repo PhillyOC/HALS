@@ -14,6 +14,15 @@ function Initialize-HALSTogetherAI {
     Write-Host "========================================" -ForegroundColor Cyan
     Write-Host ""
 
+    if (-not (Get-Command Invoke-TogetherAI -ErrorAction SilentlyContinue)) {
+        if (Get-Command Import-HALSAIProvider -ErrorAction SilentlyContinue) {
+            Import-HALSAIProvider -Provider TogetherAI
+        }
+        else {
+            Import-Module (Join-Path (Get-HALSRoot) "AI\Providers\TogetherAI.psm1") -Force -Global
+        }
+    }
+
     #------------------------------------------------------
     # Step 1 : API Key
     #------------------------------------------------------

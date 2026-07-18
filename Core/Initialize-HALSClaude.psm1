@@ -14,6 +14,15 @@ function Initialize-HALSClaude {
     Write-Host "========================================" -ForegroundColor Cyan
     Write-Host ""
 
+    if (-not (Get-Command Invoke-Claude -ErrorAction SilentlyContinue)) {
+        if (Get-Command Import-HALSAIProvider -ErrorAction SilentlyContinue) {
+            Import-HALSAIProvider -Provider Claude
+        }
+        else {
+            Import-Module (Join-Path (Get-HALSRoot) "AI\Providers\Claude.psm1") -Force -Global
+        }
+    }
+
     #------------------------------------------------------
     # Step 1 : API Key
     #------------------------------------------------------

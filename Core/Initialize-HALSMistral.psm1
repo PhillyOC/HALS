@@ -17,6 +17,15 @@ function Initialize-HALSMistral {
     Write-Host "========================================" -ForegroundColor Cyan
     Write-Host ""
 
+    if (-not (Get-Command Invoke-Mistral -ErrorAction SilentlyContinue)) {
+        if (Get-Command Import-HALSAIProvider -ErrorAction SilentlyContinue) {
+            Import-HALSAIProvider -Provider Mistral
+        }
+        else {
+            Import-Module (Join-Path (Get-HALSRoot) "AI\Providers\Mistral.psm1") -Force -Global
+        }
+    }
+
     #------------------------------------------------------
     # Step 1 : API Key
     #------------------------------------------------------

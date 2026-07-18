@@ -81,12 +81,17 @@ Import-Module "$(Get-HALSRoot)\AI\HALSAI.psm1" `
 
 Import-Module "$(Get-HALSRoot)\AI\HALSAIProvider.psm1"        -Force
 
-# Load every AI setup wizard so Help commands work at the prompt.
+# Load every AI provider module and setup wizard so Initialize-*
+# commands (and their Invoke-/Get- helpers) work at the prompt.
 foreach ($AIProvider in @(Get-HALSAIProviderRegistry)) {
-    if ([string]::IsNullOrWhiteSpace($AIProvider.SetupModule)) { continue }
-    $SetupPath = Join-Path (Get-HALSRoot) $AIProvider.SetupModule
-    if (Test-Path -LiteralPath $SetupPath) {
-        Import-Module $SetupPath -Force -Global
+    foreach ($RelativePath in @($AIProvider.ModulePath, $AIProvider.SetupModule) |
+        Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
+        Select-Object -Unique) {
+
+        $ModuleFile = Join-Path (Get-HALSRoot) $RelativePath
+        if (Test-Path -LiteralPath $ModuleFile) {
+            Import-Module $ModuleFile -Force -Global
+        }
     }
 }
 

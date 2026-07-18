@@ -10,6 +10,20 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
+function Import-HALSOllamaProviderModule {
+
+    if (Get-Command Get-OllamaModels -ErrorAction SilentlyContinue) {
+        return
+    }
+
+    if (Get-Command Import-HALSAIProvider -ErrorAction SilentlyContinue) {
+        Import-HALSAIProvider -Provider Ollama
+        return
+    }
+
+    Import-Module (Join-Path (Get-HALSRoot) "AI\Providers\Ollama.psm1") -Force -Global
+}
+
 function Initialize-HALSOllama {
 
     Write-Host ""
@@ -17,6 +31,8 @@ function Initialize-HALSOllama {
     Write-Host " HALS OLLAMA SETUP" -ForegroundColor Cyan
     Write-Host "========================================" -ForegroundColor Cyan
     Write-Host ""
+
+    Import-HALSOllamaProviderModule
 
     #------------------------------------------------------
     # Step 1 : Base URL
@@ -43,7 +59,7 @@ function Initialize-HALSOllama {
     Write-Host ""
     Write-Host "Step 2 : Checking Ollama at $BaseUrl ..." -ForegroundColor Yellow
 
-    $PulledModels = Get-OllamaModels -BaseUrl $BaseUrl
+    $PulledModels = @(Get-OllamaModels -BaseUrl $BaseUrl)
 
     if ($PulledModels.Count -eq 0) {
 

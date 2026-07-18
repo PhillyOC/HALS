@@ -14,6 +14,15 @@ function Initialize-HALSGemini {
     Write-Host "========================================" -ForegroundColor Cyan
     Write-Host ""
 
+    if (-not (Get-Command Invoke-Gemini -ErrorAction SilentlyContinue)) {
+        if (Get-Command Import-HALSAIProvider -ErrorAction SilentlyContinue) {
+            Import-HALSAIProvider -Provider Gemini
+        }
+        else {
+            Import-Module (Join-Path (Get-HALSRoot) "AI\Providers\Gemini.psm1") -Force -Global
+        }
+    }
+
     #------------------------------------------------------
     # Step 1 : API Key
     #------------------------------------------------------
