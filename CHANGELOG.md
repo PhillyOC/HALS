@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.0.8 — 2026-07-18
+
+Official OAuth-ready release with Windows installer, portable zip, and one-line bootstrap install. SmartThings OAuth verified end-to-end.
+
+### Published assets
+- `HALS-Setup-1.0.8.exe` — Inno Setup installer (Start Menu shortcut, no admin)
+- `HALS-1.0.8.zip` — portable tree
+- `Install-FromGitHub.ps1`, `Install-HALS.ps1`, `Install-HALS.cmd` — bootstrap scripts
+
+See [ReleaseNotes.md](ReleaseNotes.md) for download links and quick start.
+
 ## 1.0.7 — 2026-07-18
 
 ### Fixed

@@ -1,6 +1,6 @@
 #==========================================================
 # HALS Installer
-# Version : 1.0.5
+# Version : 1.0.8
 #
 # Installs a portable HALS tree, creates shortcuts, and
 # prepares empty Secrets/Config folders from examples.
