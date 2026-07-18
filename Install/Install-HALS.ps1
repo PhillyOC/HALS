@@ -1,14 +1,14 @@
 #==========================================================
 # HALS Installer
-# Version : 1.0.0
+# Version : 1.0.3
 #
 # Installs a portable HALS tree, creates shortcuts, and
 # prepares empty Secrets/Config folders from examples.
 #
 # Examples:
 #   .\Install-HALS.ps1
-#   .\Install-HALS.ps1 -PackagePath .\HALS-1.0.0.zip
-#   .\Install-HALS.ps1 -FromGitHub -Version 1.0.0
+#   .\Install-HALS.ps1 -PackagePath .\HALS-1.0.3.zip
+#   .\Install-HALS.ps1 -FromGitHub -Version 1.0.3
 #==========================================================
 
 [CmdletBinding(DefaultParameterSetName = "Auto")]

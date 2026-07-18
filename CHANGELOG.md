@@ -7,6 +7,9 @@
 - Gemini setup now loads the live model list from your API key instead of stale preview model names
 - Gemini setup and provider calls show clearer messages for missing models and billing/quota errors
 
+### Added
+- `Scripts\Build-HALSInstaller.ps1` to build `HALS-Setup-<version>.exe` locally with Inno Setup
+
 ## 1.0.2 — 2026-07-18
 
 ### Fixed

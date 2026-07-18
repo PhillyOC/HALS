@@ -105,6 +105,16 @@ Output lands in `dist\`:
 - `HALS-1.0.3.zip` — portable archive
 - `Assets\HALS.ico` / `Assets\HALS.png` — application branding
 
+### Build the Windows installer locally
+
+Requires [Inno Setup 6](https://jrsoftware.org/isdl.php):
+
+```powershell
+.\Scripts\Build-HALSInstaller.ps1
+```
+
+This stages the portable tree, compiles `dist\HALS-Setup-1.0.3.exe`, and copies the bootstrap installer scripts into `dist\`.
+
 ### Publish a GitHub Release
 
 1. Ensure `VERSION` matches the release (currently `1.0.3`)
