@@ -3,7 +3,7 @@
 
 #define MyAppName "HALS"
 #ifndef MyAppVersion
-  #define MyAppVersion "1.0.6"
+  #define MyAppVersion "1.0.7"
 #endif
 #define MyAppPublisher "HALS contributors"
 #define MyAppURL "https://github.com/PhillyOC/HALS"
@@ -11,7 +11,7 @@
 #define MyAppIcon "Assets\HALS.ico"
 
 #ifndef SourceDir
-  #define SourceDir "..\dist\HALS-1.0.6"
+  #define SourceDir "..\dist\HALS-1.0.7"
 #endif
 
 #ifndef OutputDir

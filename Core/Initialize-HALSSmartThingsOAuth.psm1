@@ -22,7 +22,7 @@ function Initialize-HALSSmartThingsOAuth {
     Write-Host ""
 
     $Configuration = Initialize-HALSOAuthConfiguration -Provider "SmartThings"
-    $Configuration = Repair-HALSSmartThingsOAuthConfiguration -Configuration $Configuration
+    $Configuration = Update-HALSSmartThingsOAuthConfiguration -Configuration $Configuration
 
     Show-HALSSmartThingsCliInstructions
 

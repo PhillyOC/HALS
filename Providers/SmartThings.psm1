@@ -317,7 +317,11 @@ function Restore-SmartThingsOAuth {
     }
 
     $Configuration = Get-HALSOAuthConfiguration -Provider "SmartThings"
-    $Configuration = Repair-HALSSmartThingsOAuthConfiguration -Configuration $Configuration
+    if (-not (Get-Command Update-HALSSmartThingsOAuthConfiguration -ErrorAction SilentlyContinue)) {
+        Import-Module (Join-Path (Get-HALSRoot) "Core\HALSSmartThingsOAuth.psm1") -Force -WarningAction SilentlyContinue
+    }
+
+    $Configuration = Update-HALSSmartThingsOAuthConfiguration -Configuration $Configuration
 
     if (-not (Test-HALSOAuthCredentialsConfigured -Configuration $Configuration)) {
         throw "SmartThings OAuth is not configured. Run Initialize-SmartThings first."

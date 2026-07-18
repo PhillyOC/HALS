@@ -84,7 +84,7 @@ function Get-HALSSmartThingsRedirectUriError {
 
 }
 
-function Repair-HALSSmartThingsOAuthConfiguration {
+function Update-HALSSmartThingsOAuthConfiguration {
 
     param(
         [Parameter(Mandatory)]
@@ -274,7 +274,7 @@ function Start-HALSSmartThingsOAuthLogin {
         Import-Module (Join-Path (Get-HALSRoot) "Core\Complete-HALSSmartThingsOAuth.psm1") -Force
     }
 
-    $Configuration = Repair-HALSSmartThingsOAuthConfiguration -Configuration $Configuration
+    $Configuration = Update-HALSSmartThingsOAuthConfiguration -Configuration $Configuration
     $Configuration.RedirectUri = $Script:HALSSmartThingsHttpbinRedirectUri
 
     $AuthUrl = New-HALSOAuthAuthorizationUrl `
@@ -332,6 +332,7 @@ Export-ModuleMember -Function `
     Test-HALSPublicHttpsRedirectUri,
     Test-HALSSmartThingsRedirectUri,
     Get-HALSSmartThingsRedirectUriError,
+    Update-HALSSmartThingsOAuthConfiguration,
     Show-HALSSmartThingsCliInstructions,
     Resolve-HALSSmartThingsOAuthCallback,
     Wait-HALSSmartThingsOAuthCallback,

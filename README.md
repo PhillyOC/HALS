@@ -2,7 +2,7 @@
 
 HALS (Home Automation & Logging System) is a PowerShell 7 application that inventories and controls smart-home devices through optional provider modules, including UniFi, SmartThings, Home Assistant, Google Nest, Philips Hue, WiZ Pro, Ecobee, and Pushbullet. It includes an interactive console, a local web control panel, and optional AI providers.
 
-**Current release: 1.0.6**
+**Current release: 1.0.7**
 
 ## Requirements
 
@@ -15,7 +15,7 @@ HALS (Home Automation & Logging System) is a PowerShell 7 application that inven
 ### Option A — Windows installer
 
 1. Open the latest [GitHub Release](https://github.com/PhillyOC/HALS/releases/latest)
-2. Download `HALS-Setup-1.0.6.exe`
+2. Download `HALS-Setup-1.0.7.exe`
 3. Run the installer (no admin rights required)
 4. Launch **HALS** from the Start Menu
 
@@ -29,7 +29,7 @@ irm https://github.com/PhillyOC/HALS/releases/latest/download/Install-FromGitHub
 
 ### Option C — Portable zip
 
-1. Download `HALS-1.0.6.zip` from [Releases](https://github.com/PhillyOC/HALS/releases/latest)
+1. Download `HALS-1.0.7.zip` from [Releases](https://github.com/PhillyOC/HALS/releases/latest)
 2. Unzip anywhere (for example `D:\HALS`)
 3. Run `Start-HALS.cmd`
 
@@ -103,8 +103,8 @@ CI parses every PowerShell source file for syntax errors. Provider integrations 
 
 Output lands in `dist\`:
 
-- `HALS-1.0.6\` — clean portable tree
-- `HALS-1.0.6.zip` — portable archive
+- `HALS-1.0.7\` — clean portable tree
+- `HALS-1.0.7.zip` — portable archive
 - `Assets\HALS.ico` / `Assets\HALS.png` — application branding
 
 ### Build the Windows installer locally
@@ -115,17 +115,17 @@ Requires [Inno Setup 6](https://jrsoftware.org/isdl.php):
 .\Scripts\Build-HALSInstaller.ps1
 ```
 
-This stages the portable tree, compiles `dist\HALS-Setup-1.0.6.exe`, and copies the bootstrap installer scripts into `dist\`.
+This stages the portable tree, compiles `dist\HALS-Setup-1.0.7.exe`, and copies the bootstrap installer scripts into `dist\`.
 
 ### Publish a GitHub Release
 
-1. Ensure `VERSION` matches the release (currently `1.0.6`)
+1. Ensure `VERSION` matches the release (currently `1.0.7`)
 2. Commit and push to `main`
 3. Tag and push:
 
 ```powershell
-git tag v1.0.6
-git push origin v1.0.6
+git tag v1.0.7
+git push origin v1.0.7
 ```
 
 The Release workflow builds the zip, compiles `HALS-Setup-<version>.exe` with Inno Setup, and uploads the assets.

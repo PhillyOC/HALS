@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.7 — 2026-07-18
+
+### Fixed
+- **SmartThings OAuth setup crash** — `Repair-HALSSmartThingsOAuthConfiguration` was no longer exported after 1.0.6; restored as `Update-HALSSmartThingsOAuthConfiguration` (approved verb) so `Initialize-SmartThings` and `Reconnect-SmartThingsOAuth` work again.
+
 ## 1.0.6 — 2026-07-18
 
 ### Fixed

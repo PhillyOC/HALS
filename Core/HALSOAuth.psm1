@@ -144,11 +144,11 @@ function Get-HALSOAuthAccessToken {
         -Provider $Provider
 
     if ($Provider -eq "SmartThings") {
-        if (-not (Get-Command Repair-HALSSmartThingsOAuthConfiguration -ErrorAction SilentlyContinue)) {
-            Import-Module (Join-Path (Get-HALSRoot) "Core\HALSSmartThingsOAuth.psm1") -Force
+        if (-not (Get-Command Update-HALSSmartThingsOAuthConfiguration -ErrorAction SilentlyContinue)) {
+            Import-Module (Join-Path (Get-HALSRoot) "Core\HALSSmartThingsOAuth.psm1") -Force -WarningAction SilentlyContinue
         }
 
-        $Repaired = Repair-HALSSmartThingsOAuthConfiguration -Configuration $Configuration
+        $Repaired = Update-HALSSmartThingsOAuthConfiguration -Configuration $Configuration
         if ($Repaired.TokenEndpoint -ne $Configuration.TokenEndpoint) {
             Save-HALSOAuthConfiguration -Provider $Provider -Configuration $Repaired
             $Configuration = $Repaired
@@ -387,10 +387,10 @@ function Confirm-HALSOAuthAuthorization {
         -Provider $Provider
 
     if ($Provider -eq "SmartThings") {
-        if (-not (Get-Command Repair-HALSSmartThingsOAuthConfiguration -ErrorAction SilentlyContinue)) {
+        if (-not (Get-Command Update-HALSSmartThingsOAuthConfiguration -ErrorAction SilentlyContinue)) {
             Import-Module (Join-Path (Get-HALSRoot) "Core\HALSSmartThingsOAuth.psm1") -Force -WarningAction SilentlyContinue
         }
-        $Configuration = Repair-HALSSmartThingsOAuthConfiguration -Configuration $Configuration
+        $Configuration = Update-HALSSmartThingsOAuthConfiguration -Configuration $Configuration
     }
 
     $Code = $AuthorizationCode.Trim()
