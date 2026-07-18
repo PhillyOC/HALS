@@ -1,6 +1,6 @@
 #==========================================================
 # HALS - Main Program
-# Version : 0.9.0
+# Version : 1.0.0
 #==========================================================
 
 Set-StrictMode -Version Latest
@@ -24,6 +24,7 @@ Import-Module "$HALSRootPath\Core\HALSRoot.psm1" -Force -WarningAction SilentlyC
 # Core Modules
 #----------------------------------------------------------
 
+Import-Module "$(Get-HALSRoot)\Core\HALSVersion.psm1"              -Force
 Import-Module "$(Get-HALSRoot)\Core\HALSDevice.psm1"               -Force
 Import-Module "$(Get-HALSRoot)\Core\HALSProviderRegistry.psm1"     -Force -Global
 Import-Module "$(Get-HALSRoot)\Core\HALSColor.psm1"                -Force

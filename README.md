@@ -2,30 +2,46 @@
 
 HALS (Home Automation & Logging System) is a PowerShell 7 application that inventories and controls smart-home devices through optional provider modules, including UniFi, SmartThings, Home Assistant, Google Nest, Philips Hue, WiZ Pro, Ecobee, and Pushbullet. It includes an interactive console, a local web control panel, and optional AI providers.
 
+**Current release: 1.0.0**
+
 ## Requirements
 
 - Windows with [PowerShell 7](https://learn.microsoft.com/powershell/scripting/install/installing-powershell-on-windows)
 - Access to the local devices and provider APIs you configure
 - Provider credentials stored locally; never commit real credentials
 
-## Install
+## Install (recommended)
+
+### Option A — Windows installer
+
+1. Open the latest [GitHub Release](https://github.com/PhillyOC/HALS/releases/latest)
+2. Download `HALS-Setup-1.0.0.exe`
+3. Run the installer (no admin rights required)
+4. Launch **HALS** from the Start Menu
+
+Default install location: `%LOCALAPPDATA%\Programs\HALS`
+
+### Option B — One-line PowerShell install
 
 ```powershell
-git clone https://github.com/YOUR_ACCOUNT/HALS.git
+irm https://github.com/PhillyOC/HALS/releases/latest/download/Install-FromGitHub.ps1 | iex
+```
+
+### Option C — Portable zip
+
+1. Download `HALS-1.0.0.zip` from [Releases](https://github.com/PhillyOC/HALS/releases/latest)
+2. Unzip anywhere (for example `D:\HALS`)
+3. Run `Start-HALS.cmd`
+
+### Option D — From source
+
+```powershell
+git clone https://github.com/PhillyOC/HALS.git
 Set-Location HALS
-Copy-Item .\Secrets\UniFi.example.json .\Secrets\UniFi.json
-Copy-Item .\Config\AI.example.json .\Config\AI.json
+.\Start-HALS.cmd
 ```
 
-Edit the copied files or use the initialization commands shown by HALS. Runtime credentials, device knowledge, and snapshots are ignored by Git.
-
-Start the interactive console:
-
-```powershell
-.\Start-HALS.ps1
-```
-
-Or use `Start-HALS.cmd`.
+After install, use `Initialize-HALSDeviceProvider` or `Initialize-HALSAI` to connect platforms and AI. Keep live credentials in a private working copy; do not commit them.
 
 ## Web control panel
 
@@ -52,13 +68,43 @@ Example files contain placeholders only. Keep local files at their non-`.example
 
 Run `Initialize-WiZ` (or choose WiZ Pro from `Initialize-HALSDeviceProvider`) and enter the client ID and redirect URI registered with [WiZ Pro](https://docs.pro.wizconnected.com/#introduction). HALS opens the OAuth-PKCE authorization page, stores the resulting tokens in `Secrets\OAuth\WiZ.json`, inventories the authorized building topology, and exposes supported light operations to HALSAI. WiZ Pro credentials are issued by WiZ; this official cloud integration is separate from the undocumented consumer-bulb LAN protocol.
 
+## Uninstall
+
+- Start Menu → **Uninstall HALS**, or
+- Run `Install\Uninstall-HALS.cmd` from the install folder, or
+- Remove the portable folder if you used the zip
+
 ## Security
 
 See [SECURITY.md](SECURITY.md). If credentials have ever been placed in a copy of this project, rotate them before publishing that copy.
 
 ## Development
 
-There is no build step. The CI workflow parses every PowerShell source file to catch syntax errors. Provider integrations require local credentials and hardware, so they are not exercised in CI.
+CI parses every PowerShell source file for syntax errors. Provider integrations require local credentials and hardware, so they are not exercised in CI.
+
+### Build a local release package
+
+```powershell
+.\Scripts\New-HALSPackage.ps1
+```
+
+Output lands in `dist\`:
+
+- `HALS-1.0.0\` — clean portable tree
+- `HALS-1.0.0.zip` — portable archive
+
+### Publish a GitHub Release
+
+1. Ensure `VERSION` is `1.0.0` (or the new version)
+2. Commit and push to `main`
+3. Tag and push:
+
+```powershell
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+The Release workflow builds the zip, compiles `HALS-Setup-<version>.exe` with Inno Setup, and uploads the assets.
 
 ## License
 

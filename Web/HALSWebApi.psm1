@@ -8,7 +8,20 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-$Script:WebVersion = "1.0.0"
+$Script:WebVersion = $(
+    $VersionFile = if ($PSCommandPath) {
+        Join-Path (Split-Path -Parent (Split-Path -Parent $PSCommandPath)) "VERSION"
+    }
+    else {
+        Join-Path (Split-Path -Parent $PSScriptRoot) "VERSION"
+    }
+    if (Test-Path -LiteralPath $VersionFile) {
+        (Get-Content -LiteralPath $VersionFile -Raw).Trim()
+    }
+    else {
+        "1.0.0"
+    }
+)
 $Script:WebStarted = Get-Date
 $Script:WebModulesLoaded = $false
 
@@ -352,7 +365,7 @@ function Get-HALSWebStatus {
 
     @{
         Version      = $Script:WebVersion
-        HALSVersion  = "0.8.0"
+        HALSVersion  = $(if (Get-Command Get-HALSVersion -ErrorAction SilentlyContinue) { Get-HALSVersion } else { $Script:WebVersion })
         Started      = $Script:WebStarted.ToString("o")
         Integrations = $Integrations
         AI           = $AI

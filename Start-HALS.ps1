@@ -5,7 +5,13 @@
 
 Clear-Host
 
-$HALSVersion = "0.9.0"
+$HALSVersionFile = Join-Path (Split-Path -Parent $PSCommandPath) "VERSION"
+$HALSVersion = if (Test-Path -LiteralPath $HALSVersionFile) {
+    (Get-Content -LiteralPath $HALSVersionFile -Raw).Trim()
+}
+else {
+    "0.0.0-dev"
+}
 
 #----------------------------------------------------------
 # HALS Root

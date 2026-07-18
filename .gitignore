@@ -13,6 +13,9 @@
 /Knowledge/*
 !/Knowledge/.gitkeep
 
+# Build / release output
+/dist/
+
 # Local test fixtures and logs
 /Test/
 *.log

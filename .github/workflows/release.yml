@@ -1,0 +1,101 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Read version
+        id: version
+        shell: pwsh
+        run: |
+          $fileVersion = (Get-Content VERSION -Raw).Trim()
+          $tag = "${{ github.ref_name }}"
+          $tagVersion = $tag -replace '^v', ''
+          if ($fileVersion -ne $tagVersion) {
+            throw "VERSION ($fileVersion) does not match tag ($tagVersion). Update VERSION before tagging."
+          }
+          "version=$fileVersion" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+      - name: Validate PowerShell syntax
+        shell: pwsh
+        run: |
+          $failed = $false
+          Get-ChildItem -Recurse -File -Include *.ps1,*.psm1 |
+            Where-Object { $_.FullName -notmatch '\\dist\\' } |
+            ForEach-Object {
+              $tokens = $null
+              $errors = $null
+              [void][System.Management.Automation.Language.Parser]::ParseFile(
+                $_.FullName,
+                [ref]$tokens,
+                [ref]$errors
+              )
+              if ($errors.Count -gt 0) {
+                $failed = $true
+                Write-Error "$($_.FullName): $($errors -join '; ')"
+              }
+            }
+          if ($failed) { exit 1 }
+
+      - name: Build portable package
+        shell: pwsh
+        run: |
+          ./Scripts/New-HALSPackage.ps1 -Version "${{ steps.version.outputs.version }}"
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup --no-progress -y
+
+      - name: Compile setup.exe
+        shell: pwsh
+        run: |
+          $version = "${{ steps.version.outputs.version }}"
+          $iscc = @(
+            "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+            "$env:ProgramFiles\Inno Setup 6\ISCC.exe"
+          ) | Where-Object { Test-Path $_ } | Select-Object -First 1
+
+          if (-not $iscc) { throw "ISCC.exe not found after Inno Setup install." }
+
+          & $iscc `
+            "/DMyAppVersion=$version" `
+            "/DSourceDir=$pwd\dist\HALS-$version" `
+            "/DOutputDir=$pwd\dist" `
+            "$pwd\Install\HALS.iss"
+
+          if (-not (Test-Path "dist\HALS-Setup-$version.exe")) {
+            throw "Setup executable was not produced."
+          }
+
+      - name: Stage installer scripts for release assets
+        shell: pwsh
+        run: |
+          Copy-Item Install\Install-HALS.ps1 dist\Install-HALS.ps1 -Force
+          Copy-Item Install\Install-FromGitHub.ps1 dist\Install-FromGitHub.ps1 -Force
+          Copy-Item Install\Install-HALS.cmd dist\Install-HALS.cmd -Force
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: HALS ${{ steps.version.outputs.version }}
+          draft: false
+          generate_release_notes: true
+          files: |
+            dist/HALS-${{ steps.version.outputs.version }}.zip
+            dist/HALS-Setup-${{ steps.version.outputs.version }}.exe
+            dist/Install-HALS.ps1
+            dist/Install-FromGitHub.ps1
+            dist/Install-HALS.cmd
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
