@@ -32,7 +32,7 @@ function Get-HALSOAuthConfiguration {
 
 }
 
-function Ensure-HALSOAuthConfiguration {
+function Initialize-HALSOAuthConfiguration {
 
     param(
         [Parameter(Mandatory)]
@@ -286,6 +286,10 @@ function New-HALSOAuthAuthorizationUrl {
         [string]$Configuration.Provider -eq "SmartThings") {
         (@($Configuration.Scopes | ForEach-Object { [Uri]::EscapeDataString($_) })) -join "+"
     }
+    elseif ($Configuration.PSObject.Properties["AuthorizationEndpoint"] -and
+        [string]$Configuration.AuthorizationEndpoint -match 'smartthings\.com/oauth/authorize') {
+        (@($Configuration.Scopes | ForEach-Object { [Uri]::EscapeDataString($_) })) -join "+"
+    }
     else {
         [Uri]::EscapeDataString(($Configuration.Scopes -join " "))
     }
@@ -360,14 +364,14 @@ function Start-HALSOAuthAuthorization {
 }
 
 #----------------------------------------------------------
-# Complete Authorization
+# Confirm Authorization
 # Used for providers that follow standard Basic Auth +
 # form-encoded token exchange (SmartThings, GoogleNest).
 # Pushbullet uses its own Complete-HALSPushbulletOAuth
 # because it requires a JSON body instead.
 #----------------------------------------------------------
 
-function Complete-HALSOAuthAuthorization {
+function Confirm-HALSOAuthAuthorization {
 
     param(
 
@@ -382,6 +386,18 @@ function Complete-HALSOAuthAuthorization {
     $Configuration = Get-HALSOAuthConfiguration `
         -Provider $Provider
 
+    if ($Provider -eq "SmartThings") {
+        if (-not (Get-Command Repair-HALSSmartThingsOAuthConfiguration -ErrorAction SilentlyContinue)) {
+            Import-Module (Join-Path (Get-HALSRoot) "Core\HALSSmartThingsOAuth.psm1") -Force -WarningAction SilentlyContinue
+        }
+        $Configuration = Repair-HALSSmartThingsOAuthConfiguration -Configuration $Configuration
+    }
+
+    $Code = $AuthorizationCode.Trim()
+    if ([string]::IsNullOrWhiteSpace($Code)) {
+        throw "Authorization code is empty."
+    }
+
     $BasicAuth = [Convert]::ToBase64String(
         [Text.Encoding]::ASCII.GetBytes(
             "$($Configuration.ClientId):$($Configuration.ClientSecret)"
@@ -390,8 +406,9 @@ function Complete-HALSOAuthAuthorization {
 
     $Body = @{
         grant_type   = "authorization_code"
-        redirect_uri = $Configuration.RedirectUri
-        code         = $AuthorizationCode
+        client_id    = [string]$Configuration.ClientId
+        redirect_uri = [string]$Configuration.RedirectUri
+        code         = $Code
     }
 
     try {
@@ -411,7 +428,22 @@ function Complete-HALSOAuthAuthorization {
         Write-Host ""
         Write-Host "===== TOKEN REQUEST FAILED =====" -ForegroundColor Red
         Write-Host ""
-        $_ | Format-List * -Force
+
+        $Detail = $_.ErrorDetails.Message
+        if (-not [string]::IsNullOrWhiteSpace($Detail)) {
+            Write-Host $Detail -ForegroundColor Red
+        }
+
+        if ($Detail -match 'invalid_grant') {
+            Write-Host ""
+            Write-Host "Common causes:" -ForegroundColor Yellow
+            Write-Host "  - The authorization code was already used or expired." -ForegroundColor DarkGray
+            Write-Host "  - Clipboard still held an old httpbin URL from a previous attempt." -ForegroundColor DarkGray
+            Write-Host "  - redirect_uri mismatch (expected: $($Configuration.RedirectUri))." -ForegroundColor DarkGray
+            Write-Host ""
+            Write-Host "Run Reconnect-SmartThingsOAuth and copy a fresh browser URL after login." -ForegroundColor Cyan
+        }
+
         throw
 
     }
@@ -435,7 +467,7 @@ function Complete-HALSOAuthAuthorization {
 
 Export-ModuleMember `
     -Function Get-HALSOAuthConfiguration,
-              Ensure-HALSOAuthConfiguration,
+              Initialize-HALSOAuthConfiguration,
               Save-HALSOAuthConfiguration,
               Test-HALSOAuthExpired,
               Get-HALSOAuthAccessToken,
@@ -445,4 +477,4 @@ Export-ModuleMember `
               Get-HALSOAuthRedirectUriGuidance,
               New-HALSOAuthAuthorizationUrl,
               Start-HALSOAuthAuthorization,
-              Complete-HALSOAuthAuthorization
+              Confirm-HALSOAuthAuthorization

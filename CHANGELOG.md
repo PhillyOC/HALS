@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.6 — 2026-07-18
+
+### Fixed
+- **SmartThings OAuth `invalid_grant`** — token exchange now includes required `client_id` in the POST body; clipboard watcher ignores stale httpbin URLs left over from previous attempts.
+- **SmartThings OAuth callback parsing** — httpbin JSON page copies and trimmed authorization codes are handled reliably.
+- **Unapproved verb warnings** — renamed exported OAuth commands to approved verbs (`Initialize-HALSOAuthConfiguration`, `Confirm-HALSOAuthAuthorization`, `Restore-SmartThingsOAuth`); `Reconnect-SmartThingsOAuth` remains available as a startup alias.
+- **Provider panel layout** — spacing between setup command names and descriptions on startup.
+
 ## 1.0.5 — 2026-07-18
 
 Stabilization release focused on OAuth reliability, provider setup wizards, and first-run experience. SmartThings OAuth is now practical on a desktop PC without ngrok; the OAuth gateway starts automatically; and several StrictMode and validation bugs that blocked saving configuration or completing authorization are fixed.

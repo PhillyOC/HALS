@@ -93,6 +93,7 @@ function Repair-HALSSmartThingsOAuthConfiguration {
 
     $Configuration.AuthorizationEndpoint = "https://api.smartthings.com/oauth/authorize"
     $Configuration.TokenEndpoint = "https://api.smartthings.com/oauth/token"
+    $Configuration | Add-Member -NotePropertyName Provider -NotePropertyValue "SmartThings" -Force
 
     if (-not $Configuration.PSObject.Properties["Scopes"] -or
         @($Configuration.Scopes).Count -eq 0) {
@@ -143,6 +144,20 @@ function Resolve-HALSSmartThingsOAuthCallback {
 
     $Text = $InputText.Trim()
 
+    if ($Text.StartsWith("{")) {
+        try {
+            $Json = $Text | ConvertFrom-Json
+            if ($Json.args -and $Json.args.code) {
+                return @{
+                    RedirectUrl = "https://httpbin.org/get?code=$([Uri]::EscapeDataString([string]$Json.args.code))"
+                }
+            }
+        }
+        catch {
+            # Fall through to regex parsing.
+        }
+    }
+
     if ($Text -match '(https?://httpbin\.org/get\?[^\s"'']+)') {
         return @{
             RedirectUrl = $Matches[1]
@@ -179,9 +194,15 @@ function Wait-HALSSmartThingsOAuthCallback {
 
     Write-Host ""
     Write-Host "  Complete login in your browser." -ForegroundColor Green
-    Write-Host "  Then select the address bar and copy it (Ctrl+L, Ctrl+C)." -ForegroundColor DarkGray
-    Write-Host "  HALS watches your clipboard and completes OAuth automatically." -ForegroundColor DarkGray
+    Write-Host "  After login, copy the FULL address bar URL (Ctrl+L, Ctrl+C)." -ForegroundColor DarkGray
+    Write-Host "  HALS ignores whatever was already on the clipboard before login." -ForegroundColor DarkGray
+    Write-Host "  HALS watches for a new clipboard entry and completes OAuth automatically." -ForegroundColor DarkGray
     Write-Host ""
+
+    $BaselineClip = (Get-Clipboard -Raw -ErrorAction SilentlyContinue)
+    if (-not [string]::IsNullOrWhiteSpace($BaselineClip)) {
+        $BaselineClip = $BaselineClip.Trim()
+    }
 
     $Deadline = (Get-Date).AddSeconds($TimeoutSeconds)
     $SeenClipboard = @{}
@@ -189,7 +210,19 @@ function Wait-HALSSmartThingsOAuthCallback {
     while ((Get-Date) -lt $Deadline) {
 
         $Clip = Get-Clipboard -Raw -ErrorAction SilentlyContinue
-        if (-not [string]::IsNullOrWhiteSpace($Clip) -and -not $SeenClipboard.ContainsKey($Clip)) {
+        if ([string]::IsNullOrWhiteSpace($Clip)) {
+            Start-Sleep -Milliseconds 500
+            continue
+        }
+
+        $Clip = $Clip.Trim()
+
+        if (-not [string]::IsNullOrWhiteSpace($BaselineClip) -and $Clip -eq $BaselineClip) {
+            Start-Sleep -Milliseconds 500
+            continue
+        }
+
+        if (-not $SeenClipboard.ContainsKey($Clip)) {
             $SeenClipboard[$Clip] = $true
             $Resolved = Resolve-HALSSmartThingsOAuthCallback -InputText $Clip
             if ($Resolved) {
@@ -299,7 +332,6 @@ Export-ModuleMember -Function `
     Test-HALSPublicHttpsRedirectUri,
     Test-HALSSmartThingsRedirectUri,
     Get-HALSSmartThingsRedirectUriError,
-    Repair-HALSSmartThingsOAuthConfiguration,
     Show-HALSSmartThingsCliInstructions,
     Resolve-HALSSmartThingsOAuthCallback,
     Wait-HALSSmartThingsOAuthCallback,

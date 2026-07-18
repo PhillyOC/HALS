@@ -6,8 +6,8 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-if (-not (Get-Command Complete-HALSOAuthAuthorization -ErrorAction SilentlyContinue)) {
-    Import-Module (Join-Path (Get-HALSRoot) "Core\HALSOAuth.psm1") -Force
+if (-not (Get-Command Confirm-HALSOAuthAuthorization -ErrorAction SilentlyContinue)) {
+    Import-Module (Join-Path (Get-HALSRoot) "Core\HALSOAuth.psm1") -Force -WarningAction SilentlyContinue
 }
 
 function Complete-HALSSmartThingsOAuth {
@@ -55,9 +55,14 @@ function Complete-HALSSmartThingsOAuth {
 
     }
 
+    $Code = $Code.Trim()
+    if ([string]::IsNullOrWhiteSpace($Code)) {
+        throw "Authorization code is empty."
+    }
+
     Write-Host "Authorization code received." -ForegroundColor Green
 
-    Complete-HALSOAuthAuthorization `
+    Confirm-HALSOAuthAuthorization `
         -Provider "SmartThings" `
         -AuthorizationCode $Code
 

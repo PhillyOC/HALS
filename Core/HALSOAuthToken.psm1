@@ -63,6 +63,10 @@ function Update-HALSOAuthAccessToken {
                 refresh_token = $Configuration.RefreshToken
             }
 
+            if ($Provider -in @("SmartThings", "GoogleNest")) {
+                $Body.client_id = [string]$Configuration.ClientId
+            }
+
             $Response = Invoke-RestMethod `
                 -Uri $Configuration.TokenEndpoint `
                 -Method Post `

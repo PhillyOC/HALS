@@ -35,8 +35,8 @@ Import-Module "$(Get-HALSRoot)\Core\HALSObservation.psm1"          -Force
 Import-Module "$(Get-HALSRoot)\Core\HALSProviderHealth.psm1"       -Force
 Import-Module "$(Get-HALSRoot)\Core\HALSEvidence.psm1"             -Force
 Import-Module "$(Get-HALSRoot)\Core\HALSLab.psm1"                  -Force -WarningAction SilentlyContinue
-Import-Module "$(Get-HALSRoot)\Core\HALSOAuth.psm1"                -Force
-Import-Module "$(Get-HALSRoot)\Core\HALSOAuthToken.psm1"           -Force
+Import-Module "$(Get-HALSRoot)\Core\HALSOAuth.psm1"                -Force -WarningAction SilentlyContinue
+Import-Module "$(Get-HALSRoot)\Core\HALSOAuthToken.psm1"           -Force -WarningAction SilentlyContinue
 
 Import-Module "$(Get-HALSRoot)\Core\HALS.psm1"                -Force
 Import-Module "$(Get-HALSRoot)\Core\Inventory.psm1"           -Force
@@ -104,7 +104,7 @@ foreach ($AIProvider in @(Get-HALSAIProviderRegistry)) {
 Get-ChildItem "$(Get-HALSRoot)\Providers" -Filter "*.psm1" |
     Sort-Object Name |
     ForEach-Object {
-        Import-Module $_.FullName -Force -Global
+        Import-Module $_.FullName -Force -Global -WarningAction SilentlyContinue
     }
 
 #----------------------------------------------------------

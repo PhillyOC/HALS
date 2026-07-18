@@ -6,8 +6,8 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-if (-not (Get-Command Ensure-HALSOAuthConfiguration -ErrorAction SilentlyContinue)) {
-    Import-Module (Join-Path (Get-HALSRoot) "Core\HALSOAuth.psm1") -Force
+if (-not (Get-Command Initialize-HALSOAuthConfiguration -ErrorAction SilentlyContinue)) {
+    Import-Module (Join-Path (Get-HALSRoot) "Core\HALSOAuth.psm1") -Force -WarningAction SilentlyContinue
 }
 
 if (-not (Get-Command Ensure-HALSGateway -ErrorAction SilentlyContinue)) {
@@ -39,12 +39,12 @@ function Initialize-HALSGoogleNestOAuth {
     Write-Host "       https://console.cloud.google.com/apis/credentials" -ForegroundColor Cyan
     Write-Host ""
 
-    if (-not (Get-Command Ensure-HALSOAuthConfiguration -ErrorAction SilentlyContinue)) {
-        Import-Module (Join-Path (Get-HALSRoot) "Core\HALSOAuth.psm1") -Force
+    if (-not (Get-Command Initialize-HALSOAuthConfiguration -ErrorAction SilentlyContinue)) {
+        Import-Module (Join-Path (Get-HALSRoot) "Core\HALSOAuth.psm1") -Force -WarningAction SilentlyContinue
     }
 
     $Config = $null
-    try { $Config = Ensure-HALSOAuthConfiguration -Provider "GoogleNest" } catch { $Config = $null }
+    try { $Config = Initialize-HALSOAuthConfiguration -Provider "GoogleNest" } catch { $Config = $null }
     $RedirectUri = if ($Config) { $Config.RedirectUri } else { "http://127.0.0.1:8000/" }
 
     Write-Host "  Required OAuth client settings:" -ForegroundColor Gray
@@ -76,7 +76,7 @@ function Initialize-HALSGoogleNestOAuth {
     # Save config
     #----------------------------------------------------------
 
-    $Config = Ensure-HALSOAuthConfiguration -Provider "GoogleNest"
+    $Config = Initialize-HALSOAuthConfiguration -Provider "GoogleNest"
     $Config.ClientId     = $ClientId
     $Config.ClientSecret = $ClientSecret
     $Config.ProjectId    = $ProjectId

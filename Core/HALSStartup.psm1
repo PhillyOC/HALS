@@ -46,14 +46,14 @@ function Write-HALSProvidersPanel {
         $AIConfiguration = Get-HALSAIConfiguration -Optional
     }
 
-    $CommandWidth = 28
+    $CommandWidth = 30
 
     Write-Host ""
     Write-Host "  DEVICE PROVIDERS" -ForegroundColor Cyan
     Write-Host (Get-Divider) -ForegroundColor DarkGray
     Write-Host ""
     Write-Host ("    " + "Initialize-HALSDeviceProvider".PadRight($CommandWidth)) -NoNewline -ForegroundColor White
-    Write-Host "Choose a platform to connect" -ForegroundColor DarkGray
+    Write-Host " Choose a platform to connect" -ForegroundColor DarkGray
     Write-Host ""
 
     foreach ($Integration in @(Get-HALSDeviceProviders)) {

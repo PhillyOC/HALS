@@ -102,7 +102,7 @@ function Initialize-HALSEcobeeOAuth {
     # Step 5: Save to OAuth config
     #----------------------------------------------------------
 
-    $Config = Ensure-HALSOAuthConfiguration -Provider "Ecobee"
+    $Config = Initialize-HALSOAuthConfiguration -Provider "Ecobee"
 
     $Config.ClientId     = $ClientId
     $Config.AccessToken  = $TokenResponse.access_token

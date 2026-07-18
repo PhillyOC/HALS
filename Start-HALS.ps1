@@ -79,6 +79,13 @@ function global:Initiazize-HALSDeviceProvider {
     Initialize-HALSDeviceProvider @args
 }
 
+function global:Reconnect-SmartThingsOAuth {
+    if (-not (Get-Command Restore-SmartThingsOAuth -ErrorAction SilentlyContinue)) {
+        Import-Module "$HALSRoot\Providers\SmartThings.psm1" -Force -Global -WarningAction SilentlyContinue
+    }
+    Restore-SmartThingsOAuth @args
+}
+
 function Version {
     Write-Host ""
     Write-Host "  HALS v$HALSVersion" -ForegroundColor Cyan

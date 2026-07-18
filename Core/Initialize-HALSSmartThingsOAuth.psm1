@@ -6,8 +6,8 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-Import-Module (Join-Path (Get-HALSRoot) "Core\HALSOAuth.psm1") -Force
-Import-Module (Join-Path (Get-HALSRoot) "Core\HALSSmartThingsOAuth.psm1") -Force
+Import-Module (Join-Path (Get-HALSRoot) "Core\HALSOAuth.psm1") -Force -WarningAction SilentlyContinue
+Import-Module (Join-Path (Get-HALSRoot) "Core\HALSSmartThingsOAuth.psm1") -Force -WarningAction SilentlyContinue
 
 function Initialize-HALSSmartThingsOAuth {
 
@@ -21,7 +21,7 @@ function Initialize-HALSSmartThingsOAuth {
     Write-Host "========================================" -ForegroundColor Cyan
     Write-Host ""
 
-    $Configuration = Ensure-HALSOAuthConfiguration -Provider "SmartThings"
+    $Configuration = Initialize-HALSOAuthConfiguration -Provider "SmartThings"
     $Configuration = Repair-HALSSmartThingsOAuthConfiguration -Configuration $Configuration
 
     Show-HALSSmartThingsCliInstructions

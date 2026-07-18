@@ -6,8 +6,8 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-if (-not (Get-Command Ensure-HALSOAuthConfiguration -ErrorAction SilentlyContinue)) {
-    Import-Module (Join-Path (Get-HALSRoot) "Core\HALSOAuth.psm1") -Force
+if (-not (Get-Command Initialize-HALSOAuthConfiguration -ErrorAction SilentlyContinue)) {
+    Import-Module (Join-Path (Get-HALSRoot) "Core\HALSOAuth.psm1") -Force -WarningAction SilentlyContinue
 }
 
 if (-not (Get-Command Ensure-HALSGateway -ErrorAction SilentlyContinue)) {
@@ -27,7 +27,7 @@ function Initialize-HALSPushbullet {
     #----------------------------------------------------------
 
     $Config = $null
-    try { $Config = Ensure-HALSOAuthConfiguration -Provider "Pushbullet" } catch { $Config = $null }
+    try { $Config = Initialize-HALSOAuthConfiguration -Provider "Pushbullet" } catch { $Config = $null }
     $RedirectUri = if ($Config) { $Config.RedirectUri } else { "http://127.0.0.1:8000/" }
 
     Write-Host "  PUSHBULLET APP REGISTRATION" -ForegroundColor White
@@ -75,7 +75,7 @@ function Initialize-HALSPushbullet {
     # Save credentials
     #----------------------------------------------------------
 
-    $Config = Ensure-HALSOAuthConfiguration -Provider "Pushbullet"
+    $Config = Initialize-HALSOAuthConfiguration -Provider "Pushbullet"
     $Config.ClientId      = $ClientId
     $Config.ClientSecret  = $ClientSecret
     $Config.Authorized    = $false

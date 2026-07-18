@@ -308,7 +308,7 @@ function Test-HALSSmartThingsOAuthPending {
 
 }
 
-function Reconnect-SmartThingsOAuth {
+function Restore-SmartThingsOAuth {
 
     if (-not (Get-Command Start-HALSSmartThingsOAuthLogin -ErrorAction SilentlyContinue)) {
         Import-Module (Join-Path (Get-HALSRoot) "Core\HALSSmartThingsOAuth.psm1") -Force
@@ -434,7 +434,7 @@ Export-ModuleMember -Function `
     Test-HALSSmartThingsConfigured,
     Test-HALSSmartThingsOAuthPending,
     Initialize-SmartThings,
-    Reconnect-SmartThingsOAuth,
+    Restore-SmartThingsOAuth,
     Invoke-HALSSmartThingsInventory,
     Get-HALSSmartThingsPermissions
 

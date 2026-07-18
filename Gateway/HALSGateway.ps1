@@ -205,7 +205,7 @@ try {
 
                     default {
                         # Standard: form-encoded + Basic Auth (SmartThings, GoogleNest)
-                        Complete-HALSOAuthAuthorization `
+                        Confirm-HALSOAuthAuthorization `
                             -Provider    $TargetProvider `
                             -AuthorizationCode $Code
                     }
