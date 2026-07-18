@@ -69,9 +69,11 @@ Import-Module "$(Get-HALSRoot)\AI\HALSAIProviderRegistry.psm1" -Force -Global
 Import-Module "$(Get-HALSRoot)\AI\AIConfiguration.psm1"       -Force
 Import-Module "$(Get-HALSRoot)\AI\InventorySerializer.psm1"   -Force
 Import-Module "$(Get-HALSRoot)\AI\ContextBuilder.psm1"        -Force
+Import-Module "$(Get-HALSRoot)\AI\HALSAIPrompt.psm1"           -Force
 Import-Module "$(Get-HALSRoot)\AI\PromptBuilder.psm1"         -Force
 Import-Module "$(Get-HALSRoot)\AI\Initialize-HALSAI.psm1"     -Force -Global
 Import-Module "$(Get-HALSRoot)\AI\PlanParser.psm1"            -Force
+Import-Module "$(Get-HALSRoot)\AI\PlanRepair.psm1"            -Force
 Import-Module "$(Get-HALSRoot)\AI\ExecutionDetector.psm1"     -Force
 
 Import-Module "$(Get-HALSRoot)\AI\HALSAI.psm1" `
@@ -167,7 +169,7 @@ $CW = 34
 
 if ($AIConfigured) {
     Write-Host ("    " + "Ask-HALSAI".PadRight($CW)) -NoNewline
-    Write-Host "Natural language control" -ForegroundColor DarkGray
+    Write-Host "Natural language control (-Verbose previews plan)" -ForegroundColor DarkGray
 }
 Write-Host ("    " + "HALS".PadRight($CW))        -NoNewline; Write-Host "Run inventory scan" -ForegroundColor DarkGray
 Write-Host ("    " + "CompareHALS".PadRight($CW)) -NoNewline; Write-Host "Compare latest snapshots" -ForegroundColor DarkGray

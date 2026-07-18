@@ -228,7 +228,12 @@ function Write-HALSInventorySummary {
         $Devices | Where-Object {
             $_.Category -eq "Firewall" -or
             $_.Category -eq "Workstation" -or
-            $_.Category -eq "Mobile Phone"
+            $_.Category -eq "Mobile Phone" -or
+            $_.Category -eq "Network Client" -or
+            $_.Category -eq "Wireless Client" -or
+            $_.Category -eq "Network Access Point" -or
+            $_.Category -eq "Network Switch" -or
+            $_.Category -eq "Network Infrastructure"
         }
     ).Count
 

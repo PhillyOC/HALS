@@ -37,13 +37,12 @@ function Initialize-OpenAI {
 
     try {
 
-        $Result = Invoke-HALSAIProvider `
-            -Provider "OpenAI" `
-            -Configuration $OpenAIConfiguration `
-            -Prompt "Reply with exactly: HALSAI initialization successful."
+        $Result = Send-HALSAIProviderInitialization `
+            -Provider OpenAI `
+            -Configuration $OpenAIConfiguration
 
         Write-Host ""
-        Write-Host "OpenAI connection successful." -ForegroundColor Green
+        Write-Host "OpenAI connection successful. HALSAI system prompt accepted." -ForegroundColor Green
         Write-Host $Result -ForegroundColor Cyan
         Write-Host ""
 

@@ -18,7 +18,9 @@ function Ask-HALSAI {
 
     param(
 
-        [string]$Question = "Analyze my home."
+        [string]$Question = "Analyze my home.",
+
+        [switch]$Verbose
 
     )
 
@@ -120,19 +122,28 @@ function Ask-HALSAI {
 
     if (-not [string]::IsNullOrWhiteSpace($Json)) {
 
-        # Print optional AI commentary before the plan
-        if (-not [string]::IsNullOrWhiteSpace($Preamble)) {
+        if ($Verbose) {
+
+            if (-not [string]::IsNullOrWhiteSpace($Preamble)) {
+
+                Write-Host ""
+                Write-Host $Preamble -ForegroundColor Cyan
+
+            }
+
+            Write-Host ""
+            Write-Host "================ RAW AI RESPONSE ================" -ForegroundColor DarkYellow
+            Write-Host $Json
+            Write-Host "=================================================" -ForegroundColor DarkYellow
+            Write-Host ""
+
+        }
+        elseif (-not [string]::IsNullOrWhiteSpace($Preamble)) {
 
             Write-Host ""
             Write-Host $Preamble -ForegroundColor Cyan
 
         }
-
-        Write-Host ""
-        Write-Host "================ RAW AI RESPONSE ================" -ForegroundColor DarkYellow
-        Write-Host $Json
-        Write-Host "=================================================" -ForegroundColor DarkYellow
-        Write-Host ""
 
         $Plan = ConvertFrom-HALSAIPlan -Json $Json
 
@@ -145,17 +156,30 @@ function Ask-HALSAI {
 
         if (Test-HALSExecutionPlan $Plan) {
 
-            Write-Host ""
-            Write-Host "Execution Plan Generated" -ForegroundColor Cyan
-            Write-Host ""
+            $Plan = Repair-HALSAIExecutionPlan `
+                -Plan $Plan `
+                -Question $Question
 
-            $Plan.Actions | Format-Table
+            if ($Verbose) {
 
-            Write-Host ""
+                Write-Host ""
+                Write-Host "Execution Plan Generated" -ForegroundColor Cyan
+                Write-Host ""
 
-            $Execute = Read-Host "Execute this plan? (Y/N)"
+                $Plan.Actions | Format-Table
 
-            if ($Execute -match "^[Yy]") {
+                Write-Host ""
+
+                $Execute = Read-Host "Execute this plan? (Y/N)"
+
+                if ($Execute -match "^[Yy]") {
+
+                    Invoke-HALSPlan -Plan $Plan
+
+                }
+
+            }
+            else {
 
                 Invoke-HALSPlan -Plan $Plan
 

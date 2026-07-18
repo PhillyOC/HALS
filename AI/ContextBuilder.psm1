@@ -87,6 +87,22 @@ function Get-HALSAIContext {
     }
 
     #------------------------------------------------------
+    # Provider Roles
+    #------------------------------------------------------
+
+    $ProviderRoles = @(
+        foreach ($Provider in @(Get-HALSDeviceProviders)) {
+            [PSCustomObject]@{
+                Provider     = $Provider.Key
+                Name         = $Provider.Name
+                Configured   = [bool](Test-HALSDeviceProviderConfigured -Provider $Provider)
+                Controllable = -not [string]::IsNullOrWhiteSpace($Provider.ActionHandlerCommand)
+                InventoryOnly = [string]::IsNullOrWhiteSpace($Provider.ActionHandlerCommand)
+            }
+        }
+    )
+
+    #------------------------------------------------------
     # AI Context
     #------------------------------------------------------
 
@@ -99,6 +115,8 @@ function Get-HALSAIContext {
         Commands       = $Commands
 
         ProviderHealth = $ProviderHealth
+
+        ProviderRoles  = $ProviderRoles
 
         KnownDevices   = $KnownDevices
 

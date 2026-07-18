@@ -62,6 +62,11 @@ function ConvertTo-HALSDevice {
     $Category = "Unknown"
     $Known = $false
 
+    if ($Device.PSObject.Properties["Category"] -and
+        -not [string]::IsNullOrWhiteSpace([string]$Device.Category)) {
+        $Category = [string]$Device.Category
+    }
+
     $Critical = $false
     $Infrastructure = $false
     $Mobile = $false

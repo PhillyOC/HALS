@@ -85,7 +85,10 @@ function Initialize-HALSPhilipsHue {
 
     try {
 
-        $Body = '{"devicetype":"HALS#GREG-PC","generateclientkey":true}'
+        $Body = (@{
+            devicetype       = "HALS#$($env:COMPUTERNAME)"
+            generateclientkey = $true
+        } | ConvertTo-Json -Compress)
 
         $Response = Invoke-RestMethod `
             -Uri "https://$BridgeIp/api" `
@@ -143,8 +146,12 @@ function Initialize-HALSPhilipsHue {
 
     try {
 
+        if (-not (Get-Command Connect-PhilipsHue -ErrorAction SilentlyContinue)) {
+            Import-Module (Join-Path (Get-HALSRoot) "Providers\PhilipsHue.psm1") -Force
+        }
+
         $Connection = Connect-PhilipsHue
-        $Lights     = Get-PhilipsHueLights -Connection $Connection
+        $Lights     = @(Get-PhilipsHueLights -Connection $Connection)
 
         Write-Host "         Connected. Found $($Lights.Count) light(s)." -ForegroundColor Green
 

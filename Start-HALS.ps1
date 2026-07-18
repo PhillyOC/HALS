@@ -87,7 +87,7 @@ function Help {
     Write-Host ""
 
     Write-Host "  -- Everyday --" -ForegroundColor DarkGray
-    Write-Host ("    " + "Ask-HALSAI".PadRight($CW))  -NoNewline; Write-Host "Natural language control" -ForegroundColor DarkGray
+    Write-Host ("    " + "Ask-HALSAI".PadRight($CW))  -NoNewline; Write-Host "Natural language control (-Verbose previews plan)" -ForegroundColor DarkGray
     Write-Host ("    " + "HALS".PadRight($CW))        -NoNewline; Write-Host "Run inventory scan" -ForegroundColor DarkGray
     Write-Host ("    " + "CompareHALS".PadRight($CW)) -NoNewline; Write-Host "Compare latest snapshots" -ForegroundColor DarkGray
     Write-Host ("    " + "Knowledge".PadRight($CW))   -NoNewline; Write-Host "Show known devices" -ForegroundColor DarkGray

@@ -101,36 +101,60 @@ function Connect-HALSConfiguredUniFi {
 }
 
 Export-ModuleMember -Function Connect-HALSConfiguredUniFi
+
+function Get-UniFiApiBase {
+
+    param(
+        [Parameter(Mandatory)]
+        $Connection
+    )
+
+    $HostName = [string]$Connection.Host
+    $Port = if ($Connection.PSObject.Properties["Port"] -and $Connection.Port) {
+        [int]$Connection.Port
+    }
+    else {
+        8443
+    }
+
+    $Site = if ($Connection.PSObject.Properties["Site"] -and $Connection.Site) {
+        [string]$Connection.Site
+    }
+    else {
+        "default"
+    }
+
+    return "https://${HostName}:${Port}/api/s/$Site"
+}
+
 function Get-UniFiInfrastructure {
     param(
         [Parameter(Mandatory)]
-        $Session,
-
-        [Parameter(Mandatory)]
-        [string]$Host
+        $Connection
     )
+
+    $BaseUri = Get-UniFiApiBase -Connection $Connection
 
     return (Invoke-RestMethod `
         -Method Get `
-        -Uri "https://$Host`:8443/api/s/default/stat/device" `
-        -WebSession $Session `
+        -Uri "$BaseUri/stat/device" `
+        -WebSession $Connection.Session `
         -SkipCertificateCheck).data
 }
 
-Export-ModuleMember -Function Get-UniFiInfrastructure
+Export-ModuleMember -Function Get-UniFiApiBase, Get-UniFiInfrastructure
 function Get-UniFiClients {
     param(
         [Parameter(Mandatory)]
-        $Session,
-
-        [Parameter(Mandatory)]
-        [string]$Host
+        $Connection
     )
+
+    $BaseUri = Get-UniFiApiBase -Connection $Connection
 
     return (Invoke-RestMethod `
         -Method Get `
-        -Uri "https://$Host`:8443/api/s/default/stat/sta" `
-        -WebSession $Session `
+        -Uri "$BaseUri/stat/sta" `
+        -WebSession $Connection.Session `
         -SkipCertificateCheck).data
 }
 
@@ -141,17 +165,52 @@ function ConvertFrom-UniFiClient {
         $Client
     )
 
+    $Name = if ($Client.name) { $Client.name } elseif ($Client.hostname) { $Client.hostname } else { "UniFi Client" }
+
+    $Category = "Network Client"
+    if ($Client.PSObject.Properties["is_wired"] -and -not $Client.is_wired) {
+        $Category = "Wireless Client"
+    }
+
     [PSCustomObject]@{
-        Name         = if ($Client.name) { $Client.name } else { $Client.hostname }
+        Name         = $Name
         Hostname     = $Client.hostname
         IP           = $Client.ip
         MAC          = $Client.mac
         Manufacturer = $Client.oui
+        Category     = $Category
         Source       = "UniFi"
     }
 }
 
-Export-ModuleMember -Function ConvertFrom-UniFiClient
+function ConvertFrom-UniFiInfrastructureDevice {
+
+    param(
+        [Parameter(Mandatory)]
+        $Device
+    )
+
+    $Category = switch ([string]$Device.type) {
+        "ugw" { "Firewall" }
+        "uap" { "Network Access Point" }
+        "usw" { "Network Switch" }
+        default { "Network Infrastructure" }
+    }
+
+    $Name = if ($Device.name) { $Device.name } else { "$Category" }
+
+    [PSCustomObject]@{
+        Name         = $Name
+        Hostname     = $Device.name
+        IP           = $Device.ip
+        MAC          = $Device.mac
+        Manufacturer = "Ubiquiti"
+        Category     = $Category
+        Source       = "UniFi"
+    }
+}
+
+Export-ModuleMember -Function ConvertFrom-UniFiClient, ConvertFrom-UniFiInfrastructureDevice
 
 function Test-HALSUniFiConfigured {
     $ConfigPath = Join-Path (Get-HALSRoot) "Secrets\UniFi.json"
@@ -227,10 +286,16 @@ function Invoke-HALSUniFiInventory {
     $Connection = Connect-HALSConfiguredUniFi
     if (-not $Connection) { return [PSCustomObject]@{ Devices = @() } }
 
-    $Infrastructure = @(Get-UniFiInfrastructure -Session $Connection.Session -Host $Connection.Host)
-    $Clients = @(Get-UniFiClients -Session $Connection.Session -Host $Connection.Host)
-    $Devices = @($Clients | ForEach-Object {
-        ConvertTo-HALSDevice -Device $_ -Source UniFi -Knowledge $Knowledge
+    $Infrastructure = @(Get-UniFiInfrastructure -Connection $Connection)
+    $Clients = @(Get-UniFiClients -Connection $Connection)
+    $Devices = @()
+
+    $Devices += @($Clients | ForEach-Object {
+        ConvertTo-HALSDevice -Device (ConvertFrom-UniFiClient -Client $_) -Source UniFi -Knowledge $Knowledge
+    })
+
+    $Devices += @($Infrastructure | ForEach-Object {
+        ConvertTo-HALSDevice -Device (ConvertFrom-UniFiInfrastructureDevice -Device $_) -Source UniFi -Knowledge $Knowledge
     })
 
     [PSCustomObject]@{

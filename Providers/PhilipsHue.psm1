@@ -89,10 +89,14 @@ function Invoke-HueRequest {
     $Response = Invoke-RestMethod @Params
 
     if ($Response.PSObject.Properties["data"]) {
-        return $Response.data
+        if ($null -eq $Response.data) {
+            return @()
+        }
+
+        return @($Response.data)
     }
 
-    return $Response
+    return @($Response)
 
 }
 
@@ -152,8 +156,8 @@ function Get-PhilipsHueInventory {
         $Connection
     )
 
-    $Lights = Get-PhilipsHueLights -Connection $Connection
-    $Rooms  = Get-PhilipsHueRooms  -Connection $Connection
+    $Lights = @(Get-PhilipsHueLights -Connection $Connection)
+    $Rooms  = @(Get-PhilipsHueRooms  -Connection $Connection)
 
     #
     # Build room lookup so each light can report its room name

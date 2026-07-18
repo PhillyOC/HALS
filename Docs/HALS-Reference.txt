@@ -82,9 +82,13 @@ Version
 Ask-HALSAI
   Sends a plain-English question or instruction to the active
   AI provider. HALSAI can answer questions about your home
-  and execute device commands. For action requests it always
-  produces an execution plan and asks for confirmation before
-  running it.
+  and execute device commands. Action requests run immediately
+  by default. Use -Verbose to preview the raw response and
+  execution plan and confirm before running.
+
+  HALS automatically injects the HALSAI system prompt from
+  AI\HALSAI-SystemPrompt.txt on every request, and sends it
+  again during Initialize-HALSAI provider setup.
 
   Examples:
     Ask-HALSAI "turn the living room lights blue"
@@ -92,6 +96,7 @@ Ask-HALSAI
     Ask-HALSAI "is the front door locked?"
     Ask-HALSAI "which lights are on right now?"
     Ask-HALSAI "turn off everything"
+    Ask-HALSAI "turn the lights purple" -Verbose
 
 Initialize-HALSAI
   Displays the available AI providers and starts the selected
@@ -438,8 +443,10 @@ Step 3 — Talk to HALSAI
     Ask-HALSAI "which sensors are showing motion?"
     Ask-HALSAI "is the front door closed?"
 
-  HALSAI will show you the plan it intends to execute and
-  ask for confirmation (Y/N) before sending any commands.
+  HALSAI executes actionable requests immediately. Use
+  -Verbose to preview the plan and confirm before running.
+
+    Ask-HALSAI "turn the lights purple" -Verbose
 
 Step 4 — Set up a second AI provider (optional)
   HALS ships pre-configured for OpenAI. To add Claude:

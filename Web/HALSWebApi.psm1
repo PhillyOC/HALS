@@ -65,8 +65,8 @@ function Initialize-HALSWebModules {
 
     $AIModules = @(
         "HALSAIProviderRegistry.psm1", "AIConfiguration.psm1", "InventorySerializer.psm1", "ContextBuilder.psm1",
-        "PromptBuilder.psm1", "Initialize-HALSAI.psm1",
-        "PlanParser.psm1", "ExecutionDetector.psm1", "HALSAI.psm1", "HALSAIProvider.psm1"
+        "HALSAIPrompt.psm1",         "HALSAIPrompt.psm1", "PromptBuilder.psm1", "Initialize-HALSAI.psm1",
+        "PlanParser.psm1", "PlanRepair.psm1", "ExecutionDetector.psm1", "HALSAI.psm1", "HALSAIProvider.psm1"
     )
 
     foreach ($Module in $AIModules) {

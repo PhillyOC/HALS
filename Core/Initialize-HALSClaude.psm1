@@ -98,7 +98,7 @@ function Initialize-HALSClaude {
     #------------------------------------------------------
 
     Write-Host ""
-    Write-Host "Step 3 : Testing connection to Anthropic API..." -ForegroundColor Yellow
+    Write-Host "Step 3 : Sending HALSAI system prompt and testing connection..." -ForegroundColor Yellow
     Write-Host ""
 
     $TestConfig = [PSCustomObject]@{
@@ -108,11 +108,11 @@ function Initialize-HALSClaude {
 
     try {
 
-        $Result = Invoke-Claude `
-            -Configuration $TestConfig `
-            -Prompt "Reply with exactly: HALS Claude initialization successful."
+        $Result = Send-HALSAIProviderInitialization `
+            -Provider Claude `
+            -Configuration $TestConfig
 
-        Write-Host "Connection OK." -ForegroundColor Green
+        Write-Host "Connection OK. HALSAI system prompt accepted." -ForegroundColor Green
         Write-Host $Result -ForegroundColor Cyan
         Write-Host ""
 

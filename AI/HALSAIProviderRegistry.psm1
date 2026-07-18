@@ -217,10 +217,34 @@ function Invoke-HALSAIProvider {
 
 }
 
+function Send-HALSAIProviderInitialization {
+
+    param(
+        [Parameter(Mandatory)]
+        [string]$Provider,
+
+        [Parameter(Mandatory)]
+        $Configuration
+    )
+
+    if (-not (Get-Command New-HALSAIProviderInitializationPrompt -ErrorAction SilentlyContinue)) {
+        Import-Module (Join-Path (Get-HALSRoot) "AI\HALSAIPrompt.psm1") -Force
+    }
+
+    $Prompt = New-HALSAIProviderInitializationPrompt
+
+    return Invoke-HALSAIProvider `
+        -Provider $Provider `
+        -Configuration $Configuration `
+        -Prompt $Prompt
+
+}
+
 Export-ModuleMember -Function Get-HALSAIProviderRegistry,
                               Get-HALSRegisteredAIProviders,
                               Get-HALSAIProvider,
                               Import-HALSAIConfiguration,
                               Test-HALSAIProviderConfigured,
                               Import-HALSAIProvider,
-                              Invoke-HALSAIProvider
+                              Invoke-HALSAIProvider,
+                              Send-HALSAIProviderInitialization

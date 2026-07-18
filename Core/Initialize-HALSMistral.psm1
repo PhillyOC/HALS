@@ -86,7 +86,7 @@ function Initialize-HALSMistral {
     #------------------------------------------------------
 
     Write-Host ""
-    Write-Host "Step 3 : Testing connection to Mistral API..." -ForegroundColor Yellow
+    Write-Host "Step 3 : Sending HALSAI system prompt and testing connection..." -ForegroundColor Yellow
     Write-Host ""
 
     $TestConfig = [PSCustomObject]@{
@@ -96,11 +96,11 @@ function Initialize-HALSMistral {
 
     try {
 
-        $Result = Invoke-Mistral `
-            -Configuration $TestConfig `
-            -Prompt "Reply with exactly: HALS Mistral initialization successful."
+        $Result = Send-HALSAIProviderInitialization `
+            -Provider Mistral `
+            -Configuration $TestConfig
 
-        Write-Host "Connection OK." -ForegroundColor Green
+        Write-Host "Connection OK. HALSAI system prompt accepted." -ForegroundColor Green
         Write-Host $Result -ForegroundColor Cyan
         Write-Host ""
 

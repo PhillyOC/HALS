@@ -127,8 +127,8 @@ function Get-HALSSmartThingsCommands {
         New-HALSCommand -Name TurnOffLight -Provider SmartThings -Description "Turn off a light."
         New-HALSCommand -Name ToggleLight -Provider SmartThings -Description "Toggle a light."
         New-HALSCommand -Name SetBrightness -Provider SmartThings -Description "Set light brightness 0-100. Required parameter: Brightness (integer)."
-        New-HALSCommand -Name SetColor -Provider SmartThings -Description "Set light color. Required parameter: Color (CSS color name)."
-        New-HALSCommand -Name SetColorTemperature -Provider SmartThings -Description "Set color temperature in Kelvin. Required parameter: ColorTemperature (integer)."
+        New-HALSCommand -Name SetColor -Provider SmartThings -Description "Set light to a named CSS color such as green, red, blue, or purple. Required parameter: Color. Use this for color names. Do NOT use SetColorTemperature for named colors."
+        New-HALSCommand -Name SetColorTemperature -Provider SmartThings -Description "Set white color temperature in Kelvin for warm/cool white requests. Required parameter: ColorTemperature (integer). Do NOT use this for named colors like green or red."
         New-HALSCommand -Name ActivateSiren -Provider SmartThings -Description "Activate siren." -Risk Medium
         New-HALSCommand -Name DeactivateSiren -Provider SmartThings -Description "Deactivate siren."
     )

@@ -131,8 +131,23 @@ function ConvertTo-HALSAIInventory {
         if ($Asset.PSObject.Properties["Capabilities"] -and $null -ne $Asset.Capabilities) {
             $CapabilityNames = @(
                 $Asset.Capabilities |
-                Select-Object -ExpandProperty Name -Unique
+                    Select-Object -ExpandProperty Name -Unique
             )
+        }
+
+        $Controllable = $false
+        if ($Sources.Count -gt 0) {
+            $Controllable = @(
+                Get-HALSCommands |
+                    Where-Object {
+                        $_.Name -in @(
+                            "TurnOnLight", "TurnOffLight", "ToggleLight",
+                            "SetBrightness", "SetColor", "SetColorTemperature", "SetScene",
+                            "ActivateSiren", "DeactivateSiren"
+                        ) -and
+                        $Sources -contains $_.Provider
+                    }
+            ).Count -gt 0
         }
 
         #
@@ -150,6 +165,8 @@ function ConvertTo-HALSAIInventory {
             Providers = $Sources
 
             Capabilities = $CapabilityNames
+
+            Controllable = $Controllable
 
             Status = $Status
 

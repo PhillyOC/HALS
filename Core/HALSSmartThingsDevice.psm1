@@ -92,6 +92,15 @@ function ConvertTo-HALSSmartThingsDevice {
 
     }
 
+    $EntityNames = @($Entities | Select-Object -ExpandProperty Name)
+    $HasSwitch = @($EntityNames | Where-Object { $_ -eq "switch.switch" }).Count -gt 0
+    $HasColor = @($EntityNames | Where-Object { $_ -like "colorControl*" }).Count -gt 0
+    $HasColorTemperature = @($EntityNames | Where-Object { $_ -like "colorTemperature*" }).Count -gt 0
+
+    if ($HasSwitch -and ($HasColor -or $HasColorTemperature) -and $Category -eq "SmartThings") {
+        $Category = "Light Bulb"
+    }
+
     [PSCustomObject]@{
 
         Name            = $Name

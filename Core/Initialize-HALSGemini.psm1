@@ -79,7 +79,7 @@ function Initialize-HALSGemini {
     #------------------------------------------------------
 
     Write-Host ""
-    Write-Host "Step 3 : Testing connection to Gemini API..." -ForegroundColor Yellow
+    Write-Host "Step 3 : Sending HALSAI system prompt and testing connection..." -ForegroundColor Yellow
     Write-Host ""
 
     $TestConfig = [PSCustomObject]@{
@@ -89,11 +89,11 @@ function Initialize-HALSGemini {
 
     try {
 
-        $Result = Invoke-Gemini `
-            -Configuration $TestConfig `
-            -Prompt "Reply with exactly: HALS Gemini initialization successful."
+        $Result = Send-HALSAIProviderInitialization `
+            -Provider Gemini `
+            -Configuration $TestConfig
 
-        Write-Host "Connection OK." -ForegroundColor Green
+        Write-Host "Connection OK. HALSAI system prompt accepted." -ForegroundColor Green
         Write-Host $Result -ForegroundColor Cyan
         Write-Host ""
 

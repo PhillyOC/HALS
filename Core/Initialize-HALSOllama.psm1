@@ -147,7 +147,7 @@ function Initialize-HALSOllama {
     #------------------------------------------------------
 
     Write-Host ""
-    Write-Host "Step 5 : Testing $Model ..." -ForegroundColor Yellow
+    Write-Host "Step 5 : Sending HALSAI system prompt and testing $Model ..." -ForegroundColor Yellow
     Write-Host ""
 
     $TestConfig = [PSCustomObject]@{
@@ -158,11 +158,11 @@ function Initialize-HALSOllama {
 
     try {
 
-        $Result = Invoke-Ollama `
-            -Configuration $TestConfig `
-            -Prompt "Reply with exactly: HALS Ollama initialization successful."
+        $Result = Send-HALSAIProviderInitialization `
+            -Provider Ollama `
+            -Configuration $TestConfig
 
-        Write-Host "Connection OK." -ForegroundColor Green
+        Write-Host "Connection OK. HALSAI system prompt accepted." -ForegroundColor Green
         Write-Host $Result.Trim() -ForegroundColor Cyan
         Write-Host ""
 

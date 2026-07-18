@@ -85,7 +85,7 @@ function Initialize-HALSTogetherAI {
     #------------------------------------------------------
 
     Write-Host ""
-    Write-Host "Step 3 : Testing connection to Together AI..." -ForegroundColor Yellow
+    Write-Host "Step 3 : Sending HALSAI system prompt and testing connection..." -ForegroundColor Yellow
     Write-Host ""
 
     $TestConfig = [PSCustomObject]@{
@@ -95,11 +95,11 @@ function Initialize-HALSTogetherAI {
 
     try {
 
-        $Result = Invoke-TogetherAI `
-            -Configuration $TestConfig `
-            -Prompt "Reply with exactly: HALS Together AI initialization successful."
+        $Result = Send-HALSAIProviderInitialization `
+            -Provider TogetherAI `
+            -Configuration $TestConfig
 
-        Write-Host "Connection OK." -ForegroundColor Green
+        Write-Host "Connection OK. HALSAI system prompt accepted." -ForegroundColor Green
         Write-Host $Result -ForegroundColor Cyan
         Write-Host ""
 
