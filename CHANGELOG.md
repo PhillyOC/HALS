@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.3 — 2026-07-18
+
+### Fixed
+- OpenAI setup no longer crashes after a successful connection test when prompting to switch providers
+- Gemini setup now loads the live model list from your API key instead of stale preview model names
+- Gemini setup and provider calls show clearer messages for missing models and billing/quota errors
+
 ## 1.0.2 — 2026-07-18
 
 ### Fixed

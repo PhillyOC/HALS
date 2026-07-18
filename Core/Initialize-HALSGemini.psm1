@@ -1,10 +1,79 @@
 #==========================================================
 # HALS - Google Gemini Setup Wizard
-# Version : 1.0.0
+# Version : 1.1.0
 #==========================================================
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+
+function Get-HALSGeminiSetupModels {
+
+    param(
+        [Parameter(Mandatory)]
+        [string]$ApiKey
+    )
+
+    $Preferred = @(
+        "gemini-2.5-flash",
+        "gemini-2.5-pro",
+        "gemini-2.0-flash"
+    )
+
+    $Available = @(Get-GeminiModels -ApiKey $ApiKey)
+
+    if ($Available.Count -eq 0) {
+        return @($Preferred)
+    }
+
+    $Sorted = @()
+
+    foreach ($Model in $Preferred) {
+        if ($Available -contains $Model) {
+            $Sorted += $Model
+        }
+    }
+
+    foreach ($Model in ($Available | Sort-Object)) {
+        if ($Sorted -notcontains $Model) {
+            $Sorted += $Model
+        }
+    }
+
+    return @($Sorted)
+
+}
+
+function Write-HALSGeminiConnectionError {
+
+    param(
+        [Parameter(Mandatory)]
+        $ErrorRecord
+    )
+
+    $Message = if (Get-Command Get-GeminiErrorMessage -ErrorAction SilentlyContinue) {
+        Get-GeminiErrorMessage -ErrorRecord $ErrorRecord
+    }
+    else {
+        $ErrorRecord.Exception.Message
+    }
+
+    Write-Host "Connection failed:" -ForegroundColor Red
+    Write-Host $Message -ForegroundColor Yellow
+    Write-Host ""
+
+    if ($Message -match 'not found|NOT_FOUND|404') {
+        Write-Host "That model name is not available for your API key." -ForegroundColor Yellow
+        Write-Host "Run Initialize-HALSGemini again and pick a model from the live list." -ForegroundColor Yellow
+    }
+    elseif ($Message -match 'depleted|RESOURCE_EXHAUSTED|429|quota|billing') {
+        Write-Host "Your Google AI project needs billing or quota restored." -ForegroundColor Yellow
+        Write-Host "Manage it at https://aistudio.google.com/app/apikey" -ForegroundColor Cyan
+    }
+    else {
+        Write-Host "Check your API key and try again." -ForegroundColor Yellow
+    }
+
+}
 
 function Initialize-HALSGemini {
 
@@ -17,6 +86,8 @@ function Initialize-HALSGemini {
     if (-not (Get-Command Resolve-HALSAIProviderCommand -ErrorAction SilentlyContinue)) {
         Import-Module (Join-Path (Get-HALSRoot) "AI\HALSAIProviderRegistry.psm1") -Force -Global
     }
+
+    $GetModels = Resolve-HALSAIProviderCommand -Provider Gemini -RequiredCommand Get-GeminiModels
     $null = Resolve-HALSAIProviderCommand -Provider Gemini
 
     #------------------------------------------------------
@@ -46,26 +117,51 @@ function Initialize-HALSGemini {
     Write-Host ""
     Write-Host "Step 2 : Choose a Gemini model." -ForegroundColor Yellow
     Write-Host ""
-    Write-Host "         Available models:" -ForegroundColor Gray
-    Write-Host "           [1] gemini-2.5-pro-preview-06-05    (most capable)" -ForegroundColor Gray
-    Write-Host "           [2] gemini-2.5-flash-preview-05-20  (fast, efficient)" -ForegroundColor Gray
-    Write-Host "           [3] gemini-2.0-flash                (stable, fast)" -ForegroundColor Gray
-    Write-Host "           [4] Enter model name manually" -ForegroundColor Gray
+
+    $Models = @(Get-HALSGeminiSetupModels -ApiKey $ApiKey)
+    $ManualOption = $Models.Count + 1
+
+    if ($Models.Count -gt 0) {
+        Write-Host "         Models available to your API key:" -ForegroundColor Gray
+        for ($Index = 0; $Index -lt $Models.Count; $Index++) {
+            Write-Host "           [$($Index + 1)] $($Models[$Index])" -ForegroundColor Gray
+        }
+    }
+    else {
+        Write-Host "         Could not load the live model list. Using common defaults:" -ForegroundColor DarkYellow
+        $Models = @("gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.0-flash")
+        $ManualOption = $Models.Count + 1
+        for ($Index = 0; $Index -lt $Models.Count; $Index++) {
+            Write-Host "           [$($Index + 1)] $($Models[$Index])" -ForegroundColor Gray
+        }
+    }
+
+    Write-Host "           [$ManualOption] Enter model name manually" -ForegroundColor Gray
     Write-Host ""
 
     do {
 
-        $ModelChoice = (Read-Host "Choice [1-4]").Trim()
+        $ModelChoice = (Read-Host "Choice [1-$ManualOption]").Trim()
+        $Model = $null
 
-        $Model = switch ($ModelChoice) {
-            "1" { "gemini-2.5-pro-preview-06-05"   }
-            "2" { "gemini-2.5-flash-preview-05-20" }
-            "3" { "gemini-2.0-flash"               }
-            "4" {
-                $Custom = (Read-Host "Model name").Trim()
-                if ([string]::IsNullOrWhiteSpace($Custom)) { $null } else { $Custom }
+        if ($ModelChoice -match '^\d+$') {
+
+            $Idx = [int]$ModelChoice
+
+            if ($Idx -ge 1 -and $Idx -le $Models.Count) {
+                $Model = $Models[$Idx - 1]
             }
-            default { $null }
+            elseif ($Idx -eq $ManualOption) {
+                $Custom = (Read-Host "Model name").Trim()
+                if (-not [string]::IsNullOrWhiteSpace($Custom)) {
+                    $Model = $Custom
+                }
+            }
+
+        }
+
+        if ([string]::IsNullOrWhiteSpace($Model)) {
+            Write-Host "Please choose a number between 1 and $ManualOption." -ForegroundColor Red
         }
 
     } until (-not [string]::IsNullOrWhiteSpace($Model))
@@ -97,11 +193,8 @@ function Initialize-HALSGemini {
     }
     catch {
 
-        Write-Host "Connection failed:" -ForegroundColor Red
-        Write-Host $_.Exception.Message -ForegroundColor Yellow
-        Write-Host ""
-        Write-Host "Check your API key and try again." -ForegroundColor Yellow
-        throw
+        Write-HALSGeminiConnectionError -ErrorRecord $_
+        return
 
     }
 
@@ -129,7 +222,7 @@ function Initialize-HALSGemini {
     if ($SetActive -eq "Y") {
         $Existing["Provider"] = "Gemini"
         Write-Host ""
-        Write-Host "Active provider set to Gemini." -ForegroundColor Green
+        Write-Host "Active provider set to Gemini  [$Model]." -ForegroundColor Green
     }
     else {
         Write-Host ""
@@ -151,4 +244,3 @@ function Initialize-HALSGemini {
 function Initialize-Gemini { Initialize-HALSGemini }
 
 Export-ModuleMember -Function Initialize-HALSGemini, Initialize-Gemini
-

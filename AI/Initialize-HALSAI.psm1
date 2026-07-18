@@ -71,14 +71,17 @@ function Initialize-OpenAI {
 
     $CurrentProvider = $Existing["Provider"]
     $Prompt = if ($CurrentProvider) {
-        "Set OpenAI as active instead of $CurrentProvider? (Y/N)"
+        "Set OpenAI as active instead of ${CurrentProvider}? (Y/N)"
     }
     else {
         "Set OpenAI as the active provider? (Y/N)"
     }
 
-    if ((Read-Host $Prompt).Trim().ToUpper() -eq "Y" -or -not $CurrentProvider) {
+    $Switch = (Read-Host $Prompt).Trim().ToUpper()
+    if ($Switch -eq "Y" -or [string]::IsNullOrWhiteSpace($CurrentProvider)) {
         $Existing["Provider"] = "OpenAI"
+        Write-Host ""
+        Write-Host "Active provider set to OpenAI." -ForegroundColor Green
     }
 
     $Existing |
