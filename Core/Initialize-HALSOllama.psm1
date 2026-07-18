@@ -10,20 +10,6 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-function Import-HALSOllamaProviderModule {
-
-    if (Get-Command Get-OllamaModels -ErrorAction SilentlyContinue) {
-        return
-    }
-
-    if (Get-Command Import-HALSAIProvider -ErrorAction SilentlyContinue) {
-        Import-HALSAIProvider -Provider Ollama
-        return
-    }
-
-    Import-Module (Join-Path (Get-HALSRoot) "AI\Providers\Ollama.psm1") -Force -Global
-}
-
 function Initialize-HALSOllama {
 
     Write-Host ""
@@ -32,7 +18,12 @@ function Initialize-HALSOllama {
     Write-Host "========================================" -ForegroundColor Cyan
     Write-Host ""
 
-    Import-HALSOllamaProviderModule
+    if (-not (Get-Command Resolve-HALSAIProviderCommand -ErrorAction SilentlyContinue)) {
+        Import-Module (Join-Path (Get-HALSRoot) "AI\HALSAIProviderRegistry.psm1") -Force -Global
+    }
+
+    $GetModels = Resolve-HALSAIProviderCommand -Provider Ollama -RequiredCommand Get-OllamaModels
+    $null = Resolve-HALSAIProviderCommand -Provider Ollama -RequiredCommand Invoke-Ollama
 
     #------------------------------------------------------
     # Step 1 : Base URL
@@ -59,7 +50,7 @@ function Initialize-HALSOllama {
     Write-Host ""
     Write-Host "Step 2 : Checking Ollama at $BaseUrl ..." -ForegroundColor Yellow
 
-    $PulledModels = @(Get-OllamaModels -BaseUrl $BaseUrl)
+    $PulledModels = @(& $GetModels -BaseUrl $BaseUrl)
 
     if ($PulledModels.Count -eq 0) {
 
@@ -158,7 +149,8 @@ function Initialize-HALSOllama {
 
     try {
 
-        $Result = Invoke-Ollama `
+        $Result = Invoke-HALSAIProvider `
+            -Provider Ollama `
             -Configuration $TestConfig `
             -Prompt "Reply with exactly: HALS Ollama initialization successful."
 
@@ -225,3 +217,4 @@ function Initialize-HALSOllama {
 function Initialize-Ollama { Initialize-HALSOllama }
 
 Export-ModuleMember -Function Initialize-HALSOllama, Initialize-Ollama
+

@@ -14,14 +14,10 @@ function Initialize-HALSGemini {
     Write-Host "========================================" -ForegroundColor Cyan
     Write-Host ""
 
-    if (-not (Get-Command Invoke-Gemini -ErrorAction SilentlyContinue)) {
-        if (Get-Command Import-HALSAIProvider -ErrorAction SilentlyContinue) {
-            Import-HALSAIProvider -Provider Gemini
-        }
-        else {
-            Import-Module (Join-Path (Get-HALSRoot) "AI\Providers\Gemini.psm1") -Force -Global
-        }
+    if (-not (Get-Command Resolve-HALSAIProviderCommand -ErrorAction SilentlyContinue)) {
+        Import-Module (Join-Path (Get-HALSRoot) "AI\HALSAIProviderRegistry.psm1") -Force -Global
     }
+    $null = Resolve-HALSAIProviderCommand -Provider Gemini
 
     #------------------------------------------------------
     # Step 1 : API Key
@@ -89,7 +85,8 @@ function Initialize-HALSGemini {
 
     try {
 
-        $Result = Invoke-Gemini `
+        $Result = Invoke-HALSAIProvider `
+            -Provider Gemini `
             -Configuration $TestConfig `
             -Prompt "Reply with exactly: HALS Gemini initialization successful."
 
@@ -154,3 +151,4 @@ function Initialize-HALSGemini {
 function Initialize-Gemini { Initialize-HALSGemini }
 
 Export-ModuleMember -Function Initialize-HALSGemini, Initialize-Gemini
+

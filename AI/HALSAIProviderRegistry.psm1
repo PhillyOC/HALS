@@ -170,13 +170,48 @@ function Import-HALSAIProvider {
 
     foreach ($RelativePath in $Paths) {
         $Path = Join-Path (Get-HALSRoot) $RelativePath
-        if (-not (Test-Path $Path)) {
+        if (-not (Test-Path -LiteralPath $Path)) {
             throw "AI provider module not found: $Path"
         }
 
         Import-Module $Path -Force -Global
     }
 }
+
+function Resolve-HALSAIProviderCommand {
+
+    param(
+        [Parameter(Mandatory)][string]$Provider,
+        [string]$RequiredCommand = ""
+    )
+
+    $ProviderMetadata = Get-HALSAIProvider -Provider $Provider
+    $CommandName = if ([string]::IsNullOrWhiteSpace($RequiredCommand)) {
+        $ProviderMetadata.InvokeCommand
+    }
+    else {
+        $RequiredCommand
+    }
+
+    $Resolved = @(Get-Command $CommandName -All -ErrorAction SilentlyContinue) |
+        Select-Object -First 1
+
+    if (-not $Resolved) {
+        Import-HALSAIProvider -Provider $ProviderMetadata.Key
+        $Resolved = @(Get-Command $CommandName -All -ErrorAction SilentlyContinue) |
+            Select-Object -First 1
+    }
+
+    if (-not $Resolved) {
+        $Path = Join-Path (Get-HALSRoot) $ProviderMetadata.ModulePath
+        throw "Failed to load $($ProviderMetadata.Name) provider command '$CommandName' from '$Path'."
+    }
+
+    return $Resolved
+}
+
+# Backward-compatible alias used by setup wizards.
+Set-Alias -Name Ensure-HALSAIProviderLoaded -Value Resolve-HALSAIProviderCommand
 
 function Invoke-HALSAIProvider {
 
@@ -223,4 +258,6 @@ Export-ModuleMember -Function Get-HALSAIProviderRegistry,
                               Import-HALSAIConfiguration,
                               Test-HALSAIProviderConfigured,
                               Import-HALSAIProvider,
-                              Invoke-HALSAIProvider
+                              Resolve-HALSAIProviderCommand,
+                              Invoke-HALSAIProvider `
+                 -Alias Ensure-HALSAIProviderLoaded

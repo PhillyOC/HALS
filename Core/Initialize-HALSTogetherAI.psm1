@@ -14,14 +14,10 @@ function Initialize-HALSTogetherAI {
     Write-Host "========================================" -ForegroundColor Cyan
     Write-Host ""
 
-    if (-not (Get-Command Invoke-TogetherAI -ErrorAction SilentlyContinue)) {
-        if (Get-Command Import-HALSAIProvider -ErrorAction SilentlyContinue) {
-            Import-HALSAIProvider -Provider TogetherAI
-        }
-        else {
-            Import-Module (Join-Path (Get-HALSRoot) "AI\Providers\TogetherAI.psm1") -Force -Global
-        }
+    if (-not (Get-Command Resolve-HALSAIProviderCommand -ErrorAction SilentlyContinue)) {
+        Import-Module (Join-Path (Get-HALSRoot) "AI\HALSAIProviderRegistry.psm1") -Force -Global
     }
+    $null = Resolve-HALSAIProviderCommand -Provider TogetherAI
 
     #------------------------------------------------------
     # Step 1 : API Key
@@ -95,7 +91,8 @@ function Initialize-HALSTogetherAI {
 
     try {
 
-        $Result = Invoke-TogetherAI `
+        $Result = Invoke-HALSAIProvider `
+            -Provider TogetherAI `
             -Configuration $TestConfig `
             -Prompt "Reply with exactly: HALS Together AI initialization successful."
 
@@ -160,3 +157,4 @@ function Initialize-HALSTogetherAI {
 function Initialize-TogetherAI { Initialize-HALSTogetherAI }
 
 Export-ModuleMember -Function Initialize-HALSTogetherAI, Initialize-TogetherAI
+

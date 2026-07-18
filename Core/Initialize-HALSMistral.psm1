@@ -17,14 +17,10 @@ function Initialize-HALSMistral {
     Write-Host "========================================" -ForegroundColor Cyan
     Write-Host ""
 
-    if (-not (Get-Command Invoke-Mistral -ErrorAction SilentlyContinue)) {
-        if (Get-Command Import-HALSAIProvider -ErrorAction SilentlyContinue) {
-            Import-HALSAIProvider -Provider Mistral
-        }
-        else {
-            Import-Module (Join-Path (Get-HALSRoot) "AI\Providers\Mistral.psm1") -Force -Global
-        }
+    if (-not (Get-Command Resolve-HALSAIProviderCommand -ErrorAction SilentlyContinue)) {
+        Import-Module (Join-Path (Get-HALSRoot) "AI\HALSAIProviderRegistry.psm1") -Force -Global
     }
+    $null = Resolve-HALSAIProviderCommand -Provider Mistral
 
     #------------------------------------------------------
     # Step 1 : API Key
@@ -96,7 +92,8 @@ function Initialize-HALSMistral {
 
     try {
 
-        $Result = Invoke-Mistral `
+        $Result = Invoke-HALSAIProvider `
+            -Provider Mistral `
             -Configuration $TestConfig `
             -Prompt "Reply with exactly: HALS Mistral initialization successful."
 
@@ -161,3 +158,4 @@ function Initialize-HALSMistral {
 function Initialize-Mistral { Initialize-HALSMistral }
 
 Export-ModuleMember -Function Initialize-HALSMistral, Initialize-Mistral
+

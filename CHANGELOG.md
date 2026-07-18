@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.2 — 2026-07-18
+
+### Fixed
+- AI setup wizards (Gemini, Together AI, Ollama, Claude, Mistral) now load provider modules before connection tests, so `Invoke-*` / `Get-OllamaModels` are available during Initialize
+
 ## 1.0.1 — 2026-07-18
 
 ### Added

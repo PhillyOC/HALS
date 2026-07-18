@@ -117,17 +117,22 @@ function Initialize-HALSAI {
         return $false
     }
 
-    $Command = $Providers[$Selection - 1].SetupCommand
+    $Selected = $Providers[$Selection - 1]
+    $Command = $Selected.SetupCommand
 
-    if (-not (Get-Command $Command -ErrorAction SilentlyContinue)) {
-        Import-HALSAIProvider -Provider $Providers[$Selection - 1].Key -Setup
-    }
+    # Always load the provider module first so setup wizards can call
+    # Invoke-* / Get-* helpers even when the wizard itself was already imported.
+    Import-HALSAIProvider -Provider $Selected.Key -Setup
+    $null = Resolve-HALSAIProviderCommand -Provider $Selected.Key
 
-    if (-not (Get-Command $Command -ErrorAction SilentlyContinue)) {
+    $Setup = @(Get-Command $Command -All -ErrorAction SilentlyContinue) |
+        Select-Object -First 1
+
+    if (-not $Setup) {
         throw "Provider setup command is unavailable after module import: $Command"
     }
 
-    & $Command
+    & $Setup
 
 }
 

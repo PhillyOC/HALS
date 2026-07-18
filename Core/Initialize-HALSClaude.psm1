@@ -14,14 +14,10 @@ function Initialize-HALSClaude {
     Write-Host "========================================" -ForegroundColor Cyan
     Write-Host ""
 
-    if (-not (Get-Command Invoke-Claude -ErrorAction SilentlyContinue)) {
-        if (Get-Command Import-HALSAIProvider -ErrorAction SilentlyContinue) {
-            Import-HALSAIProvider -Provider Claude
-        }
-        else {
-            Import-Module (Join-Path (Get-HALSRoot) "AI\Providers\Claude.psm1") -Force -Global
-        }
+    if (-not (Get-Command Resolve-HALSAIProviderCommand -ErrorAction SilentlyContinue)) {
+        Import-Module (Join-Path (Get-HALSRoot) "AI\HALSAIProviderRegistry.psm1") -Force -Global
     }
+    $null = Resolve-HALSAIProviderCommand -Provider Claude
 
     #------------------------------------------------------
     # Step 1 : API Key
@@ -108,7 +104,8 @@ function Initialize-HALSClaude {
 
     try {
 
-        $Result = Invoke-Claude `
+        $Result = Invoke-HALSAIProvider `
+            -Provider Claude `
             -Configuration $TestConfig `
             -Prompt "Reply with exactly: HALS Claude initialization successful."
 
@@ -189,3 +186,4 @@ function Initialize-HALSClaude {
 function Initialize-Claude { Initialize-HALSClaude }
 
 Export-ModuleMember -Function Initialize-HALSClaude, Initialize-Claude
+
