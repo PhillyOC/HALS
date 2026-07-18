@@ -6,6 +6,14 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
+if (-not (Get-Command Ensure-HALSOAuthConfiguration -ErrorAction SilentlyContinue)) {
+    Import-Module (Join-Path (Get-HALSRoot) "Core\HALSOAuth.psm1") -Force
+}
+
+if (-not (Get-Command Ensure-HALSGateway -ErrorAction SilentlyContinue)) {
+    Import-Module (Join-Path (Get-HALSRoot) "Core\HALSGatewayManager.psm1") -Force
+}
+
 function Initialize-HALSPushbullet {
 
     Write-Host ""
@@ -19,8 +27,8 @@ function Initialize-HALSPushbullet {
     #----------------------------------------------------------
 
     $Config = $null
-    try { $Config = Get-HALSOAuthConfiguration -Provider "Pushbullet" } catch {}
-    $RedirectUri = if ($Config) { $Config.RedirectUri } else { "(configure RedirectUri in Secrets\OAuth\Pushbullet.json)" }
+    try { $Config = Ensure-HALSOAuthConfiguration -Provider "Pushbullet" } catch { $Config = $null }
+    $RedirectUri = if ($Config) { $Config.RedirectUri } else { "http://127.0.0.1:8000/" }
 
     Write-Host "  PUSHBULLET APP REGISTRATION" -ForegroundColor White
     Write-Host "  " + ("-" * 46) -ForegroundColor DarkGray
@@ -67,37 +75,15 @@ function Initialize-HALSPushbullet {
     # Save credentials
     #----------------------------------------------------------
 
-    $Config               = Get-HALSOAuthConfiguration -Provider "Pushbullet"
+    $Config = Ensure-HALSOAuthConfiguration -Provider "Pushbullet"
     $Config.ClientId      = $ClientId
     $Config.ClientSecret  = $ClientSecret
     $Config.Authorized    = $false
     $Config.AccessToken   = ""
     Save-HALSOAuthConfiguration -Provider "Pushbullet" -Configuration $Config
 
-    #----------------------------------------------------------
-    # Gateway reminder
-    #----------------------------------------------------------
-
     Write-Host ""
-    Write-Host "  BEFORE CONTINUING" -ForegroundColor White
-    Write-Host "  " + ("-" * 46) -ForegroundColor DarkGray
-    Write-Host ""
-    Write-Host "  Make sure the HALS Gateway is running." -ForegroundColor Yellow
-    Write-Host "  Open a second terminal and run:" -ForegroundColor Yellow
-    Write-Host ""
-    Write-Host ("    & '" + (Get-HALSRoot) + "\Gateway\HALSGateway.ps1'") -ForegroundColor Cyan
-    Write-Host ""
-
-    $GwReady = (Read-Host "  Gateway running? (Y/N)").Trim().ToUpper()
-    if ($GwReady -ne "Y") {
-        Write-Host ""
-        Write-Host "  Start the Gateway first, then re-run Initialize-HALSPushbullet." -ForegroundColor Yellow
-        return
-    }
-
-    #----------------------------------------------------------
-    # Launch flow
-    #----------------------------------------------------------
+    Initialize-HALSGateway | Out-Null
 
     Write-Host ""
     Write-Host "  Opening Pushbullet consent page..." -ForegroundColor Green

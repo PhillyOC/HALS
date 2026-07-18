@@ -1,14 +1,14 @@
 #==========================================================
 # HALS - OAuth Token Manager
-# Version : 1.1.0
+# Version : 1.2.0
 #==========================================================
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-#----------------------------------------------------------
-# Refresh Access Token
-#----------------------------------------------------------
+if (-not (Get-Command Get-HALSOAuthSetupCommand -ErrorAction SilentlyContinue)) {
+    Import-Module (Join-Path (Get-HALSRoot) "Core\HALSOAuth.psm1") -Force
+}
 
 function Update-HALSOAuthAccessToken {
 
@@ -22,41 +22,57 @@ function Update-HALSOAuthAccessToken {
     $Configuration = Get-HALSOAuthConfiguration `
         -Provider $Provider
 
+    $SetupCommand = Get-HALSOAuthSetupCommand -Provider $Provider
+
     if ([string]::IsNullOrWhiteSpace($Configuration.RefreshToken)) {
 
-        throw "$Provider does not have a refresh token. Re-run Initialize-HALSSmartThingsOAuth to reauthorize."
+        throw "$Provider does not have a refresh token. Re-run $SetupCommand to reauthorize."
 
     }
 
     Write-Host ""
     Write-Host "Refreshing $Provider OAuth token..." -ForegroundColor Cyan
 
-    #
-    # SmartThings token endpoint requires Basic Auth.
-    # client_id / client_secret must NOT be in the body.
-    #
-
-    $BasicAuth = [Convert]::ToBase64String(
-        [Text.Encoding]::ASCII.GetBytes(
-            "$($Configuration.ClientId):$($Configuration.ClientSecret)"
-        )
-    )
-
-    $Body = @{
-        grant_type    = "refresh_token"
-        refresh_token = $Configuration.RefreshToken
-    }
-
     try {
 
-        $Response = Invoke-RestMethod `
-            -Uri $Configuration.TokenEndpoint `
-            -Method Post `
-            -Headers @{
-                Authorization = "Basic $BasicAuth"
-            } `
-            -ContentType "application/x-www-form-urlencoded" `
-            -Body $Body
+        if ($Provider -eq "Ecobee") {
+
+            $Body = @{
+                grant_type    = "refresh_token"
+                refresh_token = $Configuration.RefreshToken
+                client_id     = $Configuration.ClientId
+            }
+
+            $Response = Invoke-RestMethod `
+                -Uri $Configuration.TokenEndpoint `
+                -Method Post `
+                -ContentType "application/x-www-form-urlencoded" `
+                -Body $Body
+
+        }
+        else {
+
+            $BasicAuth = [Convert]::ToBase64String(
+                [Text.Encoding]::ASCII.GetBytes(
+                    "$($Configuration.ClientId):$($Configuration.ClientSecret)"
+                )
+            )
+
+            $Body = @{
+                grant_type    = "refresh_token"
+                refresh_token = $Configuration.RefreshToken
+            }
+
+            $Response = Invoke-RestMethod `
+                -Uri $Configuration.TokenEndpoint `
+                -Method Post `
+                -Headers @{
+                    Authorization = "Basic $BasicAuth"
+                } `
+                -ContentType "application/x-www-form-urlencoded" `
+                -Body $Body
+
+        }
 
     }
     catch {
@@ -67,7 +83,7 @@ function Update-HALSOAuthAccessToken {
             -Provider $Provider `
             -Configuration $Configuration
 
-        throw "Unable to refresh the OAuth token for $Provider. Re-run Initialize-HALSSmartThingsOAuth to reauthorize."
+        throw "Unable to refresh the OAuth token for $Provider. Re-run $SetupCommand to reauthorize."
 
     }
 

@@ -79,6 +79,60 @@ function Get-HALSAIColorCapableAssets {
 
 }
 
+function New-HALSAIColorExecutionPlan {
+
+    param(
+        [Parameter(Mandatory)]
+        [string]$Question
+    )
+
+    if (-not (Test-HALSQuestionRequestsColor -Question $Question)) {
+        return $null
+    }
+
+    $ColorName = Get-HALSQuestionColorName -Question $Question
+    if ([string]::IsNullOrWhiteSpace($ColorName)) {
+        $ColorName = "white"
+    }
+
+    $TargetAssets = @(Get-HALSAIColorCapableAssets)
+    if ($TargetAssets.Count -eq 0) {
+        return $null
+    }
+
+    $WantsAllLights = $Question -match '(?i)\blights\b|\bevery\b|\ball\b'
+    if (-not $WantsAllLights) {
+        return $null
+    }
+
+    $Repaired = @()
+
+    foreach ($Asset in $TargetAssets) {
+
+        $Provider = Get-HALSCommands |
+            Where-Object { $_.Name -eq "SetColor" -and $Asset.Providers -contains $_.Provider } |
+            Select-Object -ExpandProperty Provider -First 1
+
+        if ([string]::IsNullOrWhiteSpace($Provider)) {
+            continue
+        }
+
+        $Repaired += New-HALSAction `
+            -Provider $Provider `
+            -Device $Asset.Name `
+            -Command "SetColor" `
+            -Parameters @{ Color = $ColorName }
+
+    }
+
+    if ($Repaired.Count -eq 0) {
+        return $null
+    }
+
+    return (New-HALSPlan -Actions $Repaired)
+
+}
+
 function Repair-HALSAIExecutionPlan {
 
     param(
@@ -95,6 +149,10 @@ function Repair-HALSAIExecutionPlan {
 
     $Actions = @($Plan.Actions)
     if ($Actions.Count -eq 0) {
+        $Replacement = New-HALSAIColorExecutionPlan -Question $Question
+        if ($Replacement) {
+            return $Replacement
+        }
         return $Plan
     }
 
@@ -151,11 +209,9 @@ function Repair-HALSAIExecutionPlan {
 
     foreach ($Asset in $TargetAssets) {
 
-        $Provider = @(
-            Get-HALSCommands |
-                Where-Object { $_.Name -eq "SetColor" -and $Asset.Providers -contains $_.Provider } |
-                Select-Object -ExpandProperty Provider -First 1
-        )
+        $Provider = Get-HALSCommands |
+            Where-Object { $_.Name -eq "SetColor" -and $Asset.Providers -contains $_.Provider } |
+            Select-Object -ExpandProperty Provider -First 1
 
         if ([string]::IsNullOrWhiteSpace($Provider)) {
             continue

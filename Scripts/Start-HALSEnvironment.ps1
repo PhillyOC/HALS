@@ -69,6 +69,9 @@ $Gateways = @(
 # Launch gateways
 #----------------------------------------------------------------------
 
+Import-Module "$HALSRoot\Core\HALSRoot.psm1" -Force -WarningAction SilentlyContinue
+Import-Module "$HALSRoot\Core\HALSGatewayManager.psm1" -Force -WarningAction SilentlyContinue
+
 $AnyLaunched = $false
 
 foreach ($Gateway in $Gateways) {
@@ -77,12 +80,26 @@ foreach ($Gateway in $Gateways) {
 
     if (Test-Path $Gateway.Path) {
 
-        Start-Process pwsh `
-            -WindowStyle Normal `
-            -ArgumentList "-NoLogo -NoProfile -ExecutionPolicy Bypass -File `"$($Gateway.Path)`""
+        try {
+            if (Get-Command Initialize-HALSGateway -ErrorAction SilentlyContinue) {
+                Initialize-HALSGateway -Quiet | Out-Null
+            }
+            elseif (Get-Command Ensure-HALSGateway -ErrorAction SilentlyContinue) {
+                Ensure-HALSGateway -Quiet | Out-Null
+            }
+            else {
+                Start-Process pwsh `
+                    -WindowStyle Normal `
+                    -ArgumentList "-NoLogo -NoProfile -ExecutionPolicy Bypass -File `"$($Gateway.Path)`""
+            }
 
-        Write-Host "[OK]" -ForegroundColor Green
-        $AnyLaunched = $true
+            Write-Host "[OK]" -ForegroundColor Green
+            $AnyLaunched = $true
+        }
+        catch {
+            Write-Host "[failed]" -ForegroundColor Yellow
+            Write-Host ("  " + $_.Exception.Message) -ForegroundColor DarkYellow
+        }
 
     }
     elseif ($Gateway.Optional) {

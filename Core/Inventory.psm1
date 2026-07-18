@@ -19,12 +19,24 @@ function Get-HALSInventory {
 
         try {
             if (-not (Test-HALSDeviceProviderConfigured -Provider $Provider)) {
+                $PendingMessage = "$($Provider.Name) is not configured."
+                if ($Provider.Key -eq "SmartThings" -and
+                    (Get-Command Test-HALSSmartThingsOAuthPending -ErrorAction SilentlyContinue) -and
+                    (Test-HALSSmartThingsOAuthPending)) {
+                    $PendingMessage = "$($Provider.Name) OAuth is not finished. Run Reconnect-SmartThingsOAuth."
+                }
+
                 Set-HALSProviderHealth `
                     -Provider $Provider.Key `
                     -Status "NotConfigured" `
-                    -Message "$($Provider.Name) is not configured."
+                    -Message $PendingMessage
 
-                Write-Host "  [ ] $($Provider.Name) not configured; skipping." -ForegroundColor DarkGray
+                if ($Provider.Key -eq "SmartThings" -and $PendingMessage -match "Reconnect-SmartThingsOAuth") {
+                    Write-Host "  [ ] $PendingMessage" -ForegroundColor Yellow
+                }
+                else {
+                    Write-Host "  [ ] $($Provider.Name) not configured; skipping." -ForegroundColor DarkGray
+                }
                 continue
             }
 

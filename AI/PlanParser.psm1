@@ -49,18 +49,20 @@ function ConvertFrom-HALSAIPlan {
             continue
         }
 
-        $Provider = if ($Action.PSObject.Properties["Provider"]) {
-            $Action.Provider
+        $Provider = if ($Action.PSObject.Properties["Provider"] -and
+            -not [string]::IsNullOrWhiteSpace([string]$Action.Provider)) {
+            [string]$Action.Provider
         }
         else {
             "Unknown"
         }
 
-        $Device = if ($Action.PSObject.Properties["Device"]) {
-            $Action.Device
+        $Device = if ($Action.PSObject.Properties["Device"] -and
+            -not [string]::IsNullOrWhiteSpace([string]$Action.Device)) {
+            [string]$Action.Device
         }
         else {
-            ""
+            $null
         }
 
         if (-not $Action.PSObject.Properties["Command"]) {
@@ -71,6 +73,11 @@ function ConvertFrom-HALSAIPlan {
         }
 
         $Command = $Action.Command
+
+        if ([string]::IsNullOrWhiteSpace($Device)) {
+            Write-Warning "Skipping action with no Device."
+            continue
+        }
 
         $Parameters = @{}
 

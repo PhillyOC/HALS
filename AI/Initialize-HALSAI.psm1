@@ -1,6 +1,6 @@
 #==========================================================
 # HALS - AI Provider Initialization
-# Version : 3.0.0
+# Version : 3.1.0
 #==========================================================
 
 Set-StrictMode -Version Latest
@@ -13,6 +13,7 @@ if (-not (Get-Command Get-HALSAIProviderRegistry -ErrorAction SilentlyContinue))
 function Initialize-OpenAI {
 
     $ConfigPath = "$(Get-HALSRoot)\Config\AI.json"
+    $ConfigDirectory = Split-Path -Parent $ConfigPath
 
     Write-Host ""
     Write-Host "========================================" -ForegroundColor Cyan
@@ -20,20 +21,57 @@ function Initialize-OpenAI {
     Write-Host "========================================" -ForegroundColor Cyan
     Write-Host ""
 
+    if (-not (Get-Command Invoke-OpenAI -ErrorAction SilentlyContinue)) {
+        if (Get-Command Import-HALSAIProvider -ErrorAction SilentlyContinue) {
+            Import-HALSAIProvider -Provider OpenAI -Setup
+        }
+        else {
+            Import-Module (Join-Path (Get-HALSRoot) "AI\Providers\OpenAI.psm1") -Force -Global
+        }
+    }
+
+    Write-Host "Step 1 : Get your OpenAI API key." -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "         Create a key at:" -ForegroundColor Gray
+    Write-Host "           https://platform.openai.com/api-keys" -ForegroundColor Cyan
+    Write-Host ""
+
     do {
-        $ApiKey = (Read-Host "OpenAI API Key").Trim()
+        $ApiKey = Get-HALSSanitizedSecret -Value (Read-Host "OpenAI API Key" -MaskInput)
         if ([string]::IsNullOrWhiteSpace($ApiKey)) {
             Write-Host "API key cannot be empty." -ForegroundColor Red
         }
     } while ([string]::IsNullOrWhiteSpace($ApiKey))
 
-    $Model = (Read-Host "OpenAI model [gpt-5.5]").Trim()
-    if ([string]::IsNullOrWhiteSpace($Model)) { $Model = "gpt-5.5" }
+    Write-Host ""
+    Write-Host "Step 2 : Choose an OpenAI model." -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "         Enter the model name exactly (for example gpt-5.6)." -ForegroundColor Gray
+    Write-Host "         Press Enter to use the default model." -ForegroundColor Gray
+    Write-Host ""
+
+    do {
+        $Model = (Read-Host "OpenAI model [gpt-5.5]").Trim()
+        if ([string]::IsNullOrWhiteSpace($Model)) {
+            $Model = "gpt-5.5"
+            break
+        }
+
+        if ($Model -match '^\d+$') {
+            Write-Host "That looks like a menu number, not a model name." -ForegroundColor Yellow
+            Write-Host "Type the model name itself (for example gpt-5.6) or press Enter for the default." -ForegroundColor Gray
+            $Model = $null
+        }
+    } while ([string]::IsNullOrWhiteSpace($Model))
 
     $OpenAIConfiguration = [PSCustomObject]@{
         ApiKey = $ApiKey
         Model  = $Model
     }
+
+    Write-Host ""
+    Write-Host "Step 3 : Sending HALSAI system prompt and testing connection..." -ForegroundColor Yellow
+    Write-Host ""
 
     try {
 
@@ -41,17 +79,17 @@ function Initialize-OpenAI {
             -Provider OpenAI `
             -Configuration $OpenAIConfiguration
 
-        Write-Host ""
-        Write-Host "OpenAI connection successful. HALSAI system prompt accepted." -ForegroundColor Green
+        Write-Host "Connection OK. HALSAI system prompt accepted." -ForegroundColor Green
         Write-Host $Result -ForegroundColor Cyan
         Write-Host ""
 
     }
     catch {
 
-        Write-Host ""
         Write-Host "OpenAI initialization failed." -ForegroundColor Red
-        Write-Host $_.Exception.Message -ForegroundColor Yellow
+        Write-Host (Format-HALSAIProviderError -ErrorRecord $_) -ForegroundColor Yellow
+        Write-Host ""
+        Write-Host "Check the API key and model name, then try again." -ForegroundColor Yellow
         Write-Host ""
 
         return $false
@@ -68,16 +106,31 @@ function Initialize-OpenAI {
         Model  = $Model
     }
 
-    $CurrentProvider = $Existing["Provider"]
-    $Prompt = if ($CurrentProvider) {
-        "Set OpenAI as active instead of $CurrentProvider? (Y/N)"
-    }
-    else {
-        "Set OpenAI as the active provider? (Y/N)"
+    $CurrentProvider = [string]$Existing["Provider"]
+    $HasActiveProvider = -not [string]::IsNullOrWhiteSpace($CurrentProvider)
+
+    Write-Host "Step 4 : Set OpenAI as the active HALSAI provider?" -ForegroundColor Yellow
+    Write-Host ""
+
+    if ($HasActiveProvider) {
+        Write-Host "         Current provider: $CurrentProvider" -ForegroundColor Gray
+        Write-Host ""
     }
 
-    if ((Read-Host $Prompt).Trim().ToUpper() -eq "Y" -or -not $CurrentProvider) {
+    if (-not $HasActiveProvider -or
+        (Read-Host "Switch to OpenAI now? (Y/N)").Trim().ToUpper() -eq "Y") {
         $Existing["Provider"] = "OpenAI"
+        Write-Host ""
+        Write-Host "Active provider set to OpenAI  [$Model]." -ForegroundColor Green
+    }
+    else {
+        Write-Host ""
+        Write-Host "Provider unchanged. To switch later, run:" -ForegroundColor Gray
+        Write-Host "  Switch-HALSAIProvider -Provider OpenAI" -ForegroundColor Cyan
+    }
+
+    if (-not (Test-Path $ConfigDirectory)) {
+        $null = New-Item -ItemType Directory -Path $ConfigDirectory -Force
     }
 
     $Existing |
@@ -85,7 +138,11 @@ function Initialize-OpenAI {
         Set-Content $ConfigPath
 
     Write-Host ""
-    Write-Host "OpenAI configuration saved." -ForegroundColor Green
+    Write-Host "========================================" -ForegroundColor Cyan
+    Write-Host " OpenAI setup complete." -ForegroundColor Cyan
+    Write-Host "========================================" -ForegroundColor Cyan
+    Write-Host ""
+    Write-Host "Run Ask-HALSAI to use HALSAI with OpenAI." -ForegroundColor Green
     Write-Host ""
 
     return $true

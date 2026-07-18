@@ -149,6 +149,14 @@ function Ask-HALSAI {
 
         if (@($Plan.Actions).Count -eq 0) {
 
+            $Plan = Repair-HALSAIExecutionPlan `
+                -Plan $Plan `
+                -Question $Question
+
+        }
+
+        if (@($Plan.Actions).Count -eq 0) {
+
             Write-Warning "Execution plan contains zero actions."
             return
 

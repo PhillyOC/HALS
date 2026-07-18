@@ -82,9 +82,16 @@ function Write-HALSProvidersPanel {
             Write-Host "Connected" -ForegroundColor Green
         }
         elseif ($Status -eq "NotConfigured" -or [string]::IsNullOrWhiteSpace($Status)) {
+            $Label = "Not configured"
+            if ($Integration.Key -eq "SmartThings" -and
+                (Get-Command Test-HALSSmartThingsOAuthPending -ErrorAction SilentlyContinue) -and
+                (Test-HALSSmartThingsOAuthPending)) {
+                $Label = "Finish OAuth (Reconnect-SmartThingsOAuth)"
+            }
+
             Write-Host ("    [ ] " + $Integration.Name.PadRight(20)) -NoNewline -ForegroundColor DarkGray
             Write-Host ($SetupCommand.PadRight($CommandWidth)) -NoNewline -ForegroundColor DarkGray
-            Write-Host "Not configured" -ForegroundColor DarkGray
+            Write-Host $Label -ForegroundColor $(if ($Label -match "Finish OAuth") { "Yellow" } else { "DarkGray" })
         }
         else {
             Write-Host ("    [!] " + $Integration.Name.PadRight(20)) -NoNewline -ForegroundColor Yellow

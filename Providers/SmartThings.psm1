@@ -12,51 +12,67 @@ $ErrorActionPreference = "Stop"
 
 function Connect-SmartThings {
 
-    #
-    # Prefer OAuth.
-    # Fall back to the legacy PAT until
-    # OAuth authorization has been completed.
-    #
+    $Root = Get-HALSRoot
+    $OAuthPath = Join-Path $Root "Secrets\OAuth\SmartThings.json"
+    $PatPath = Join-Path $Root "Secrets\SmartThings.json"
 
-    try {
+    if (Test-Path -LiteralPath $OAuthPath) {
 
-        $AccessToken = Get-HALSOAuthAccessToken `
-            -Provider "SmartThings"
+        try {
 
-        Write-Host "      Using SmartThings OAuth" `
-            -ForegroundColor DarkGray
+            $AccessToken = Get-HALSOAuthAccessToken `
+                -Provider "SmartThings"
+
+            Write-Host "      Using SmartThings OAuth" `
+                -ForegroundColor DarkGray
+
+            return @{
+
+                Headers = @{
+
+                    Authorization = "Bearer $AccessToken"
+                    Accept        = "application/json"
+
+                }
+
+            }
+
+        }
+        catch {
+
+            throw "SmartThings OAuth failed: $($_.Exception.Message) Run Reconnect-SmartThingsOAuth or Initialize-SmartThings to reauthorize."
+
+        }
 
     }
-    catch {
 
-        Write-Host "      OAuth unavailable. Using legacy PAT." `
+    if (Test-Path -LiteralPath $PatPath) {
+
+        Write-Host "      Using legacy SmartThings PAT. Run Initialize-SmartThings for OAuth." `
             -ForegroundColor DarkYellow
 
-        $Secrets = Get-Content `
-            "$(Get-HALSRoot)\Secrets\SmartThings.json" `
-            -Raw |
-            ConvertFrom-Json
+        $Secrets = Get-Content -LiteralPath $PatPath -Raw | ConvertFrom-Json
 
         if ([string]::IsNullOrWhiteSpace($Secrets.Token)) {
 
-            throw "No SmartThings authentication method is available."
+            throw "SmartThings PAT file exists but Token is empty. Run Initialize-SmartThings."
 
         }
 
-        $AccessToken = $Secrets.Token
+        return @{
 
-    }
+            Headers = @{
 
-    return @{
+                Authorization = "Bearer $($Secrets.Token)"
+                Accept        = "application/json"
 
-        Headers = @{
-
-            Authorization = "Bearer $AccessToken"
-            Accept        = "application/json"
+            }
 
         }
 
     }
+
+    throw "SmartThings is not configured. Run Initialize-SmartThings."
 
 }
 
@@ -231,6 +247,10 @@ Export-ModuleMember `
 
 function Test-HALSSmartThingsConfigured {
 
+    if (-not (Get-Command Test-HALSOAuthCredentialsConfigured -ErrorAction SilentlyContinue)) {
+        Import-Module (Join-Path (Get-HALSRoot) "Core\HALSOAuth.psm1") -Force -ErrorAction SilentlyContinue
+    }
+
     $Root = Get-HALSRoot
     $PatPath = Join-Path $Root "Secrets\SmartThings.json"
     $OAuthPath = Join-Path $Root "Secrets\OAuth\SmartThings.json"
@@ -238,9 +258,10 @@ function Test-HALSSmartThingsConfigured {
     if (Test-Path $OAuthPath) {
         try {
             $Config = Get-Content $OAuthPath -Raw | ConvertFrom-Json
-            if (($Config.PSObject.Properties["Authorized"] -and $Config.Authorized) -or
-                ($Config.PSObject.Properties["AccessToken"] -and
-                 -not [string]::IsNullOrWhiteSpace($Config.AccessToken))) {
+            if ((Test-HALSOAuthCredentialsConfigured -Configuration $Config) -and
+                (($Config.PSObject.Properties["Authorized"] -and $Config.Authorized) -or
+                 ($Config.PSObject.Properties["AccessToken"] -and
+                  -not [string]::IsNullOrWhiteSpace($Config.AccessToken)))) {
                 return $true
             }
         }
@@ -258,23 +279,96 @@ function Test-HALSSmartThingsConfigured {
     return $false
 }
 
+function Test-HALSSmartThingsOAuthPending {
+
+    if (-not (Get-Command Test-HALSOAuthCredentialsConfigured -ErrorAction SilentlyContinue)) {
+        Import-Module (Join-Path (Get-HALSRoot) "Core\HALSOAuth.psm1") -Force -ErrorAction SilentlyContinue
+    }
+
+    $OAuthPath = Join-Path (Get-HALSRoot) "Secrets\OAuth\SmartThings.json"
+    if (-not (Test-Path -LiteralPath $OAuthPath)) {
+        return $false
+    }
+
+    try {
+        $Config = Get-Content -LiteralPath $OAuthPath -Raw | ConvertFrom-Json
+        if (-not (Test-HALSOAuthCredentialsConfigured -Configuration $Config)) {
+            return $false
+        }
+
+        $Authorized = $Config.PSObject.Properties["Authorized"] -and $Config.Authorized
+        $HasToken = $Config.PSObject.Properties["AccessToken"] -and
+            -not [string]::IsNullOrWhiteSpace([string]$Config.AccessToken)
+
+        return -not $Authorized -and -not $HasToken
+    }
+    catch {
+        return $false
+    }
+
+}
+
+function Reconnect-SmartThingsOAuth {
+
+    if (-not (Get-Command Start-HALSSmartThingsOAuthLogin -ErrorAction SilentlyContinue)) {
+        Import-Module (Join-Path (Get-HALSRoot) "Core\HALSSmartThingsOAuth.psm1") -Force
+        Import-Module (Join-Path (Get-HALSRoot) "Core\Complete-HALSSmartThingsOAuth.psm1") -Force
+        Import-Module (Join-Path (Get-HALSRoot) "Core\HALSOAuth.psm1") -Force
+    }
+
+    $Configuration = Get-HALSOAuthConfiguration -Provider "SmartThings"
+    $Configuration = Repair-HALSSmartThingsOAuthConfiguration -Configuration $Configuration
+
+    if (-not (Test-HALSOAuthCredentialsConfigured -Configuration $Configuration)) {
+        throw "SmartThings OAuth is not configured. Run Initialize-SmartThings first."
+    }
+
+    $Configuration.Authorized = $false
+    $Configuration.AccessToken = ""
+    $Configuration.RefreshToken = ""
+    $Configuration.AccessTokenExpires = $null
+    Save-HALSOAuthConfiguration -Provider "SmartThings" -Configuration $Configuration
+
+    Write-Host ""
+    Write-Host "Re-authorizing SmartThings OAuth..." -ForegroundColor Cyan
+    Write-Host ""
+
+    if ($Configuration.PSObject.Properties["CallbackMode"] -and
+        [string]$Configuration.CallbackMode -eq "Tunnel") {
+        Start-HALSSmartThingsOAuthTunnelLogin -Configuration $Configuration
+        return
+    }
+
+    Start-HALSSmartThingsOAuthLogin -Configuration $Configuration
+
+}
+
 function Initialize-SmartThings {
+
+    param(
+        [switch]$UseTunnel
+    )
 
     Write-Host ""
     Write-Host "HALS SmartThings setup" -ForegroundColor Cyan
     Write-Host ""
+    Write-Host "  OAuth is the recommended long-term authentication method." -ForegroundColor DarkGray
+    Write-Host ""
     Write-Host "  [1] OAuth (recommended)"
-    Write-Host "  [2] Personal access token"
+    Write-Host "  [2] Personal access token (legacy, expires quickly)"
     Write-Host ""
 
-    $Choice = (Read-Host "Authentication method [1-2]").Trim()
+    $Choice = (Read-Host "Authentication method [1-2] [1]").Trim()
+    if ([string]::IsNullOrWhiteSpace($Choice)) {
+        $Choice = "1"
+    }
 
     if ($Choice -eq "1") {
         if (-not (Get-Command Initialize-HALSSmartThingsOAuth -ErrorAction SilentlyContinue)) {
             Import-Module (Join-Path (Get-HALSRoot) "Core\Initialize-HALSSmartThingsOAuth.psm1") -Force
             Import-Module (Join-Path (Get-HALSRoot) "Core\Complete-HALSSmartThingsOAuth.psm1") -Force
         }
-        Initialize-HALSSmartThingsOAuth
+        Initialize-HALSSmartThingsOAuth -UseTunnel:$UseTunnel
         return
     }
 
@@ -338,7 +432,9 @@ function Get-HALSSmartThingsPermissions {
 
 Export-ModuleMember -Function `
     Test-HALSSmartThingsConfigured,
+    Test-HALSSmartThingsOAuthPending,
     Initialize-SmartThings,
+    Reconnect-SmartThingsOAuth,
     Invoke-HALSSmartThingsInventory,
     Get-HALSSmartThingsPermissions
 

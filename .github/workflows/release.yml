@@ -90,7 +90,8 @@ jobs:
         with:
           name: HALS ${{ steps.version.outputs.version }}
           draft: false
-          generate_release_notes: true
+          generate_release_notes: false
+          body_path: CHANGELOG.md
           files: |
             dist/HALS-${{ steps.version.outputs.version }}.zip
             dist/HALS-Setup-${{ steps.version.outputs.version }}.exe

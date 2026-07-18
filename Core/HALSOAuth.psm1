@@ -32,6 +32,46 @@ function Get-HALSOAuthConfiguration {
 
 }
 
+function Ensure-HALSOAuthConfiguration {
+
+    param(
+        [Parameter(Mandatory)]
+        [string]$Provider
+    )
+
+    $Path = Join-Path (Get-HALSRoot) "Secrets\OAuth\$Provider.json"
+
+    if (Test-Path -LiteralPath $Path) {
+        return (Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json)
+    }
+
+    $ExamplePath = Join-Path (Get-HALSRoot) "Secrets\OAuth\$Provider.example.json"
+
+    if (-not (Test-Path -LiteralPath $ExamplePath)) {
+        throw "OAuth template not found: $ExamplePath"
+    }
+
+    $Configuration = Get-Content -LiteralPath $ExamplePath -Raw | ConvertFrom-Json
+
+    if ($Configuration.PSObject.Properties["RedirectUri"] -and
+        ($Configuration.RedirectUri -match 'example\.com' -or
+         [string]::IsNullOrWhiteSpace([string]$Configuration.RedirectUri))) {
+
+        if ($Provider -eq "SmartThings") {
+            $Configuration.RedirectUri = ""
+        }
+        else {
+            $Configuration.RedirectUri = "http://127.0.0.1:8000/"
+        }
+
+    }
+
+    Save-HALSOAuthConfiguration -Provider $Provider -Configuration $Configuration
+
+    return $Configuration
+
+}
+
 #----------------------------------------------------------
 # Save OAuth Provider Configuration
 #----------------------------------------------------------
@@ -103,6 +143,18 @@ function Get-HALSOAuthAccessToken {
     $Configuration = Get-HALSOAuthConfiguration `
         -Provider $Provider
 
+    if ($Provider -eq "SmartThings") {
+        if (-not (Get-Command Repair-HALSSmartThingsOAuthConfiguration -ErrorAction SilentlyContinue)) {
+            Import-Module (Join-Path (Get-HALSRoot) "Core\HALSSmartThingsOAuth.psm1") -Force
+        }
+
+        $Repaired = Repair-HALSSmartThingsOAuthConfiguration -Configuration $Configuration
+        if ($Repaired.TokenEndpoint -ne $Configuration.TokenEndpoint) {
+            Save-HALSOAuthConfiguration -Provider $Provider -Configuration $Repaired
+            $Configuration = $Repaired
+        }
+    }
+
     if ([string]::IsNullOrWhiteSpace($Configuration.AccessToken)) {
 
         throw "$Provider has not been authorized."
@@ -127,6 +179,98 @@ function Get-HALSOAuthAccessToken {
 # redirect URI or domain the user has configured.
 #----------------------------------------------------------
 
+function Get-HALSOAuthSetupCommand {
+
+    param(
+        [Parameter(Mandatory)]
+        [string]$Provider
+    )
+
+    switch ($Provider) {
+        "SmartThings" { return "Initialize-SmartThings" }
+        "GoogleNest"  { return "Initialize-GoogleNest" }
+        "Pushbullet"  { return "Initialize-Pushbullet" }
+        "Ecobee"      { return "Initialize-Ecobee" }
+        default       { return "Initialize-HALSDeviceProvider" }
+    }
+
+}
+
+function Test-HALSOAuthCredentialsConfigured {
+
+    param(
+        [Parameter(Mandatory)]
+        $Configuration
+    )
+
+    if (-not $Configuration.PSObject.Properties["ClientId"] -or
+        [string]::IsNullOrWhiteSpace([string]$Configuration.ClientId) -or
+        [string]$Configuration.ClientId -eq "REPLACE_ME") {
+        return $false
+    }
+
+    if ($Configuration.PSObject.Properties["ClientSecret"]) {
+        $Secret = [string]$Configuration.ClientSecret
+        if ([string]::IsNullOrWhiteSpace($Secret) -or $Secret -eq "REPLACE_ME") {
+            return $false
+        }
+    }
+
+    return $true
+
+}
+
+function Test-HALSOAuthRedirectUriForProvider {
+
+    param(
+        [Parameter(Mandatory)]
+        [string]$Provider,
+
+        [Parameter(Mandatory)]
+        [string]$RedirectUri
+    )
+
+    if ([string]::IsNullOrWhiteSpace($RedirectUri)) {
+        return $false
+    }
+
+    if ($Provider -eq "SmartThings") {
+        if (-not (Get-Command Test-HALSSmartThingsRedirectUri -ErrorAction SilentlyContinue)) {
+            Import-Module (Join-Path (Get-HALSRoot) "Core\HALSSmartThingsOAuth.psm1") -Force
+        }
+
+        return (Test-HALSSmartThingsRedirectUri -RedirectUri $RedirectUri -AllowHttpbinManual)
+    }
+
+    return $true
+
+}
+
+function Get-HALSOAuthRedirectUriGuidance {
+
+    param(
+        [Parameter(Mandatory)]
+        [string]$Provider
+    )
+
+    switch ($Provider) {
+        "SmartThings" {
+            return @(
+                "SmartThings OAuth-In apps must be created with: smartthings apps:create",
+                "Developer Workspace credentials return 403 Forbidden.",
+                "Redirect URI must be a public HTTPS hostname (ngrok, Cloudflare, your domain).",
+                "https://127.0.0.1:8000/ is NOT valid — adding https:// does not help.",
+                "Manual fallback: register https://httpbin.org/get and paste the callback URL.",
+                "Point tunnels at http://127.0.0.1:8000/ where the HALS gateway listens."
+            ) -join "`n"
+        }
+        default {
+            return "Register redirect URI http://127.0.0.1:8000/ unless your provider requires HTTPS."
+        }
+    }
+
+}
+
 function New-HALSOAuthAuthorizationUrl {
 
     param(
@@ -138,13 +282,19 @@ function New-HALSOAuthAuthorizationUrl {
 
     )
 
-    $Scopes = $Configuration.Scopes -join " "
+    $ScopeParam = if ($Configuration.PSObject.Properties["Provider"] -and
+        [string]$Configuration.Provider -eq "SmartThings") {
+        (@($Configuration.Scopes | ForEach-Object { [Uri]::EscapeDataString($_) })) -join "+"
+    }
+    else {
+        [Uri]::EscapeDataString(($Configuration.Scopes -join " "))
+    }
 
     $Url = "$($Configuration.AuthorizationEndpoint)" +
-           "?client_id=$($Configuration.ClientId)" +
+           "?client_id=$([Uri]::EscapeDataString([string]$Configuration.ClientId))" +
            "&response_type=code" +
            "&redirect_uri=$([Uri]::EscapeDataString($Configuration.RedirectUri))" +
-           "&scope=$([Uri]::EscapeDataString($Scopes))"
+           "&scope=$ScopeParam"
 
     if (-not [string]::IsNullOrWhiteSpace($State)) {
         $Url += "&state=$([Uri]::EscapeDataString($State))"
@@ -176,12 +326,26 @@ function Start-HALSOAuthAuthorization {
 
     )
 
+    if (-not (Get-Command Initialize-HALSGateway -ErrorAction SilentlyContinue)) {
+        Import-Module (Join-Path (Get-HALSRoot) "Core\HALSGatewayManager.psm1") -Force
+    }
+
     $Configuration = Get-HALSOAuthConfiguration `
         -Provider $Provider
+
+    if (-not (Test-HALSOAuthCredentialsConfigured -Configuration $Configuration)) {
+        throw "$Provider OAuth client credentials are missing. Run $(Get-HALSOAuthSetupCommand -Provider $Provider) first."
+    }
+
+    if (-not (Test-HALSOAuthRedirectUriForProvider -Provider $Provider -RedirectUri $Configuration.RedirectUri)) {
+        throw (Get-HALSOAuthRedirectUriGuidance -Provider $Provider)
+    }
 
     if ([string]::IsNullOrWhiteSpace($State)) {
         $State = $Provider
     }
+
+    Initialize-HALSGateway | Out-Null
 
     $Url = New-HALSOAuthAuthorizationUrl `
         -Configuration $Configuration `
@@ -271,9 +435,14 @@ function Complete-HALSOAuthAuthorization {
 
 Export-ModuleMember `
     -Function Get-HALSOAuthConfiguration,
+              Ensure-HALSOAuthConfiguration,
               Save-HALSOAuthConfiguration,
               Test-HALSOAuthExpired,
               Get-HALSOAuthAccessToken,
+              Get-HALSOAuthSetupCommand,
+              Test-HALSOAuthCredentialsConfigured,
+              Test-HALSOAuthRedirectUriForProvider,
+              Get-HALSOAuthRedirectUriGuidance,
               New-HALSOAuthAuthorizationUrl,
               Start-HALSOAuthAuthorization,
               Complete-HALSOAuthAuthorization

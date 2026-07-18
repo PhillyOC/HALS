@@ -1,6 +1,6 @@
 #==========================================================
 # HALS Installer
-# Version : 1.0.0
+# Version : 1.0.5
 #
 # Installs a portable HALS tree, creates shortcuts, and
 # prepares empty Secrets/Config folders from examples.
@@ -313,6 +313,7 @@ try {
     Write-Host "             or $Launcher" -ForegroundColor DarkGray
     Write-Host ""
     Write-Host "  Next     : Initialize-HALSDeviceProvider or Initialize-HALSAI" -ForegroundColor DarkGray
+    Write-Host "             SmartThings OAuth pending? Reconnect-SmartThingsOAuth" -ForegroundColor DarkGray
     Write-Host ""
 
     if ($LaunchAfterInstall) {

@@ -6,6 +6,10 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
+if (-not (Get-Command Format-HALSAIProviderError -ErrorAction SilentlyContinue)) {
+    Import-Module (Join-Path (Get-HALSRoot) "AI\HALSAIProviderRegistry.psm1") -Force -Global
+}
+
 function Initialize-HALSGemini {
 
     Write-Host ""
@@ -51,9 +55,9 @@ function Initialize-HALSGemini {
     Write-Host "Step 2 : Choose a Gemini model." -ForegroundColor Yellow
     Write-Host ""
     Write-Host "         Available models:" -ForegroundColor Gray
-    Write-Host "           [1] gemini-2.5-pro-preview-06-05    (most capable)" -ForegroundColor Gray
-    Write-Host "           [2] gemini-2.5-flash-preview-05-20  (fast, efficient)" -ForegroundColor Gray
-    Write-Host "           [3] gemini-2.0-flash                (stable, fast)" -ForegroundColor Gray
+    Write-Host "           [1] gemini-2.5-pro          (most capable)" -ForegroundColor Gray
+    Write-Host "           [2] gemini-2.5-flash        (fast, efficient)" -ForegroundColor Gray
+    Write-Host "           [3] gemini-2.0-flash        (stable, fast)" -ForegroundColor Gray
     Write-Host "           [4] Enter model name manually" -ForegroundColor Gray
     Write-Host ""
 
@@ -62,9 +66,9 @@ function Initialize-HALSGemini {
         $ModelChoice = (Read-Host "Choice [1-4]").Trim()
 
         $Model = switch ($ModelChoice) {
-            "1" { "gemini-2.5-pro-preview-06-05"   }
-            "2" { "gemini-2.5-flash-preview-05-20" }
-            "3" { "gemini-2.0-flash"               }
+            "1" { "gemini-2.5-pro"   }
+            "2" { "gemini-2.5-flash" }
+            "3" { "gemini-2.0-flash" }
             "4" {
                 $Custom = (Read-Host "Model name").Trim()
                 if ([string]::IsNullOrWhiteSpace($Custom)) { $null } else { $Custom }
@@ -101,9 +105,10 @@ function Initialize-HALSGemini {
     catch {
 
         Write-Host "Connection failed:" -ForegroundColor Red
-        Write-Host $_.Exception.Message -ForegroundColor Yellow
+        Write-Host (Format-HALSAIProviderError -ErrorRecord $_) -ForegroundColor Yellow
         Write-Host ""
-        Write-Host "Check your API key and try again." -ForegroundColor Yellow
+        Write-Host "If the error mentions SERVICE_DISABLED, enable the Gemini API in Google Cloud Console," -ForegroundColor Yellow
+        Write-Host "then wait a few minutes and try again." -ForegroundColor Yellow
         throw
 
     }
@@ -113,6 +118,7 @@ function Initialize-HALSGemini {
     #------------------------------------------------------
 
     $ConfigPath = "$(Get-HALSRoot)\Config\AI.json"
+    $ConfigDirectory = Split-Path -Parent $ConfigPath
     $Existing   = if (Test-Path $ConfigPath) {
         Get-Content $ConfigPath -Raw | ConvertFrom-Json -AsHashtable
     } else { @{} }
@@ -137,6 +143,10 @@ function Initialize-HALSGemini {
     else {
         Write-Host ""
         Write-Host "To switch later: Switch-HALSAIProvider -Provider Gemini" -ForegroundColor Cyan
+    }
+
+    if (-not (Test-Path $ConfigDirectory)) {
+        $null = New-Item -ItemType Directory -Path $ConfigDirectory -Force
     }
 
     $Existing | ConvertTo-Json -Depth 10 | Set-Content $ConfigPath

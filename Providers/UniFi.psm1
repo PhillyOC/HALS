@@ -61,12 +61,93 @@ function Connect-UniFi {
         Port      = $NormalizedPort
         Site      = $Site
         Session   = $Session
+        Username  = $Username
+        Password  = $Password
         Connected = Get-Date
     }
 }
 
 
 Export-ModuleMember -Function Connect-UniFi
+
+function Resolve-UniFiSiteName {
+
+    param(
+        [Parameter(Mandatory)]
+        [string]$Site,
+
+        [Parameter(Mandatory)]
+        [string]$HostName
+    )
+
+    $Resolved = $Site.Trim()
+    if ([string]::IsNullOrWhiteSpace($Resolved)) {
+        $Resolved = "default"
+    }
+
+    if ($Resolved -eq $HostName) {
+        return "default"
+    }
+
+    return $Resolved
+
+}
+
+function Get-UniFiSites {
+
+    param(
+        [Parameter(Mandatory)]
+        $Connection
+    )
+
+    $HostName = [string]$Connection.Host
+    $Port = if ($Connection.PSObject.Properties["Port"] -and $Connection.Port) {
+        [int]$Connection.Port
+    }
+    else {
+        8443
+    }
+
+    $Response = Invoke-RestMethod `
+        -Method Get `
+        -Uri "https://${HostName}:${Port}/api/self/sites" `
+        -WebSession $Connection.Session `
+        -SkipCertificateCheck
+
+    if ($Response.PSObject.Properties["data"]) {
+        return @($Response.data)
+    }
+
+    if ($Response -is [System.Collections.IEnumerable] -and -not ($Response -is [string])) {
+        return @($Response)
+    }
+
+    return @()
+
+}
+
+function Test-UniFiControllerAccess {
+
+    param(
+        [Parameter(Mandatory)]
+        $Connection
+    )
+
+    try {
+        $null = Get-UniFiClients -Connection $Connection
+        return $true
+    }
+    catch {
+        $Message = $_.Exception.Message
+        if ($_.ErrorDetails -and $_.ErrorDetails.Message) {
+            $Message = $_.ErrorDetails.Message
+        }
+
+        $Site = if ($Connection.PSObject.Properties["Site"]) { $Connection.Site } else { "default" }
+        throw "UniFi site '$Site' is not accessible after login. Choose the site slug from your controller URL (for example /manage/default/dashboard means site 'default'). $Message"
+    }
+
+}
 
 function Connect-HALSConfiguredUniFi {
 
@@ -94,7 +175,9 @@ function Connect-HALSConfiguredUniFi {
         Username = [string]$Config.Username
         Password = [string]$Config.Password
         Port     = if ($Config.PSObject.Properties["Port"] -and $Config.Port) { [int]$Config.Port } else { 8443 }
-        Site     = if ($Config.PSObject.Properties["Site"] -and $Config.Site) { [string]$Config.Site } else { "default" }
+        Site     = Resolve-UniFiSiteName `
+            -Site (if ($Config.PSObject.Properties["Site"] -and $Config.Site) { [string]$Config.Site } else { "default" }) `
+            -HostName [string]$Config.Host
     }
 
     Connect-UniFi @Parameters
@@ -118,7 +201,7 @@ function Get-UniFiApiBase {
     }
 
     $Site = if ($Connection.PSObject.Properties["Site"] -and $Connection.Site) {
-        [string]$Connection.Site
+        Resolve-UniFiSiteName -Site [string]$Connection.Site -HostName [string]$Connection.Host
     }
     else {
         "default"
@@ -227,10 +310,18 @@ function Initialize-UniFi {
     Write-Host ""
     Write-Host "HALS UniFi setup" -ForegroundColor Cyan
     Write-Host ""
+    Write-Host "Enter the controller hostname or IP only (not the full dashboard URL)." -ForegroundColor DarkGray
+    Write-Host "Example host: unifi-cloudkey" -ForegroundColor DarkGray
+    Write-Host ""
 
-    $HostName = (Read-Host "Controller host").Trim()
+    do {
+        $HostName = (Read-Host "Controller host").Trim().Trim('"').Trim("'")
+        if (-not (Test-HALSNetworkHostInput -HostName $HostName)) {
+            Write-Host "Enter a hostname or IP only (for example unifi-cloudkey)." -ForegroundColor Yellow
+            Write-Host "Do not paste a file path, JSON file, or full URL." -ForegroundColor Gray
+        }
+    } while (-not (Test-HALSNetworkHostInput -HostName $HostName))
     $PortText = (Read-Host "Controller port [8443]").Trim()
-    $Site = (Read-Host "Site [default]").Trim()
     $Username = (Read-Host "Username").Trim()
     $Password = Read-Host "Password" -MaskInput
 
@@ -240,22 +331,93 @@ function Initialize-UniFi {
         throw "Host, username, and password are required."
     }
 
-    if ([string]::IsNullOrWhiteSpace($Site)) { $Site = "default" }
     $Port = if ($PortText) { [int]$PortText } else { 8443 }
 
     try {
-        $TestConnection = Connect-UniFi `
+        $Login = Connect-UniFi `
             -Host $HostName `
             -Port $Port `
-            -Site $Site `
+            -Site "default" `
             -Username $Username `
             -Password $Password
     }
     catch {
         Write-Host ""
-        Write-Host "UniFi connection failed. Configuration was not saved." -ForegroundColor Yellow
+        Write-Host "UniFi login failed. Configuration was not saved." -ForegroundColor Yellow
         Write-Host $_.Exception.Message -ForegroundColor DarkGray
-        Write-Host "Tip: enter just the hostname or IP (for example unifi.local), not a full URL." -ForegroundColor DarkGray
+        Write-Host "Tip: enter just the hostname or IP (for example unifi-cloudkey), not a full URL." -ForegroundColor DarkGray
+        Write-Host ""
+        throw
+    }
+
+    $Sites = @(Get-UniFiSites -Connection $Login)
+    $Site = "default"
+
+    if ($Sites.Count -gt 0) {
+
+        Write-Host ""
+        Write-Host "Available UniFi sites:" -ForegroundColor Yellow
+
+        for ($Index = 0; $Index -lt $Sites.Count; $Index++) {
+            $Entry = $Sites[$Index]
+            $Slug = if ($Entry.PSObject.Properties["name"]) { [string]$Entry.name } else { [string]$Entry }
+            $Desc = if ($Entry.PSObject.Properties["desc"] -and $Entry.desc) { " ($($Entry.desc))" } else { "" }
+            Write-Host ("  [{0}] {1}{2}" -f ($Index + 1), $Slug, $Desc) -ForegroundColor Gray
+        }
+
+        Write-Host ""
+        Write-Host "Site is the slug from your controller URL." -ForegroundColor DarkGray
+        Write-Host "Example: https://unifi-cloudkey:8443/manage/default/dashboard -> site 'default'" -ForegroundColor DarkGray
+        Write-Host ""
+
+        $DefaultIndex = 1
+        for ($Index = 0; $Index -lt $Sites.Count; $Index++) {
+            if ($Sites[$Index].PSObject.Properties["name"] -and
+                [string]$Sites[$Index].name -eq "default") {
+                $DefaultIndex = $Index + 1
+                break
+            }
+        }
+
+        $SiteChoice = (Read-Host "Choose site [1-$($Sites.Count)] (default $DefaultIndex)").Trim()
+        if ([string]::IsNullOrWhiteSpace($SiteChoice)) {
+            $SiteChoice = [string]$DefaultIndex
+        }
+
+        if ($SiteChoice -match '^\d+$') {
+            $Idx = [int]$SiteChoice
+            if ($Idx -ge 1 -and $Idx -le $Sites.Count) {
+                $Site = [string]$Sites[$Idx - 1].name
+            }
+        }
+        else {
+            $Site = Resolve-UniFiSiteName -Site $SiteChoice -HostName $Login.Host
+        }
+
+    }
+    else {
+
+        Write-Host ""
+        Write-Host "Could not list sites automatically." -ForegroundColor DarkYellow
+        Write-Host "Enter the site slug from your controller URL (usually 'default')." -ForegroundColor DarkGray
+        Write-Host ""
+
+        $SiteInput = (Read-Host "Site [default]").Trim()
+        $Site = Resolve-UniFiSiteName `
+            -Site $(if ([string]::IsNullOrWhiteSpace($SiteInput)) { "default" } else { $SiteInput }) `
+            -HostName $Login.Host
+
+    }
+
+    $Login.Site = $Site
+
+    try {
+        $null = Test-UniFiControllerAccess -Connection $Login
+    }
+    catch {
+        Write-Host ""
+        Write-Host "UniFi login succeeded, but inventory access failed." -ForegroundColor Yellow
+        Write-Host $_.Exception.Message -ForegroundColor DarkGray
         Write-Host ""
         throw
     }
@@ -265,8 +427,8 @@ function Initialize-UniFi {
     }
 
     @{
-        Host     = $TestConnection.Host
-        Port     = $TestConnection.Port
+        Host     = $Login.Host
+        Port     = $Login.Port
         Site     = $Site
         Username = $Username
         Password = $Password
@@ -274,9 +436,10 @@ function Initialize-UniFi {
 
     Write-Host ""
     Write-Host "UniFi connected and configuration saved." -ForegroundColor Green
+    Write-Host "  Site: $Site" -ForegroundColor DarkGray
     Write-Host ""
 
-    $TestConnection
+    $Login
 }
 
 function Invoke-HALSUniFiInventory {
@@ -324,7 +487,8 @@ Export-ModuleMember -Function `
     Test-HALSUniFiConfigured,
     Initialize-UniFi,
     Invoke-HALSUniFiInventory,
-    Get-HALSUniFiPermissions
+    Get-HALSUniFiPermissions,
+    Resolve-UniFiSiteName
 
 if (Get-Command Register-HALSDeviceProvider -ErrorAction SilentlyContinue) {
     Register-HALSDeviceProvider `

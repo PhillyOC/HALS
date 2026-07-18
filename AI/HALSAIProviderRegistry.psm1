@@ -231,12 +231,54 @@ function Send-HALSAIProviderInitialization {
         Import-Module (Join-Path (Get-HALSRoot) "AI\HALSAIPrompt.psm1") -Force
     }
 
+    Write-Host "Sending HALSAI system prompt..." -ForegroundColor Yellow
+
     $Prompt = New-HALSAIProviderInitializationPrompt
 
     return Invoke-HALSAIProvider `
         -Provider $Provider `
         -Configuration $Configuration `
         -Prompt $Prompt
+
+}
+
+function Format-HALSAIProviderError {
+
+    param(
+        [Parameter(Mandatory)]
+        $ErrorRecord
+    )
+
+    $Message = $ErrorRecord.Exception.Message
+
+    if ($ErrorRecord.ErrorDetails -and $ErrorRecord.ErrorDetails.Message) {
+        $Body = $ErrorRecord.ErrorDetails.Message
+
+        try {
+            $Parsed = $Body | ConvertFrom-Json
+
+            if ($Parsed.error.message) {
+                $Message = [string]$Parsed.error.message
+            }
+
+            if ($Parsed.error.details) {
+                foreach ($Detail in @($Parsed.error.details)) {
+                    if ($Detail.PSObject.Properties["metadata"] -and
+                        $Detail.metadata.activationUrl) {
+                        $Message += "`nEnable the API at: $($Detail.metadata.activationUrl)"
+                        break
+                    }
+                }
+            }
+        }
+        catch {
+            if ($Body.Length -lt 500) {
+                $Message = $Body
+            }
+        }
+    }
+
+    return $Message
 
 }
 
@@ -247,4 +289,5 @@ Export-ModuleMember -Function Get-HALSAIProviderRegistry,
                               Test-HALSAIProviderConfigured,
                               Import-HALSAIProvider,
                               Invoke-HALSAIProvider,
-                              Send-HALSAIProviderInitialization
+                              Send-HALSAIProviderInitialization,
+                              Format-HALSAIProviderError

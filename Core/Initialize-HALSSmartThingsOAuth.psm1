@@ -1,12 +1,19 @@
 #==========================================================
 # HALS - SmartThings OAuth Initialization
-# Version : 1.2.0
+# Version : 1.6.0
 #==========================================================
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
+Import-Module (Join-Path (Get-HALSRoot) "Core\HALSOAuth.psm1") -Force
+Import-Module (Join-Path (Get-HALSRoot) "Core\HALSSmartThingsOAuth.psm1") -Force
+
 function Initialize-HALSSmartThingsOAuth {
+
+    param(
+        [switch]$UseTunnel
+    )
 
     Write-Host ""
     Write-Host "========================================" -ForegroundColor Cyan
@@ -14,62 +21,121 @@ function Initialize-HALSSmartThingsOAuth {
     Write-Host "========================================" -ForegroundColor Cyan
     Write-Host ""
 
-    $Configuration = Get-HALSOAuthConfiguration -Provider "SmartThings"
+    $Configuration = Ensure-HALSOAuthConfiguration -Provider "SmartThings"
+    $Configuration = Repair-HALSSmartThingsOAuthConfiguration -Configuration $Configuration
 
-    #----------------------------------------------------------
-    # Registration instructions
-    #----------------------------------------------------------
+    Show-HALSSmartThingsCliInstructions
 
-    Write-Host "  SMARTTHINGS APP REGISTRATION" -ForegroundColor White
-    Write-Host "  " + ("-" * 46) -ForegroundColor DarkGray
-    Write-Host ""
-    Write-Host "  If you have not yet registered HALS as a SmartThings" -ForegroundColor Gray
-    Write-Host "  app, do so at:" -ForegroundColor Gray
-    Write-Host ""
-    Write-Host "    https://developer.smartthings.com/workspace" -ForegroundColor Cyan
-    Write-Host ""
-    Write-Host "  Required settings:" -ForegroundColor Gray
-    Write-Host ("    App Type        : API_ONLY") -ForegroundColor Gray
-    Write-Host ("    Redirect URI    : " + $Configuration.RedirectUri) -ForegroundColor White
-    Write-Host ("    OAuth Client ID : (copy from app settings)") -ForegroundColor Gray
-    Write-Host ""
-    Write-Host "  NOTE: The redirect URI above must match exactly" -ForegroundColor DarkYellow
-    Write-Host "  what is registered in your SmartThings app." -ForegroundColor DarkYellow
-    Write-Host ""
+    if (-not $UseTunnel) {
 
-    #----------------------------------------------------------
-    # Gateway reminder
-    #----------------------------------------------------------
-
-    Write-Host "  BEFORE CONTINUING" -ForegroundColor White
-    Write-Host "  " + ("-" * 46) -ForegroundColor DarkGray
-    Write-Host ""
-    Write-Host "  Make sure the HALS Gateway is running." -ForegroundColor Yellow
-    Write-Host "  Open a second terminal and run:" -ForegroundColor Yellow
-    Write-Host ""
-    Write-Host ("    & '" + (Get-HALSRoot) + "\Gateway\HALSGateway.ps1'") -ForegroundColor Cyan
-    Write-Host ""
-
-    $Ready = (Read-Host "  Gateway running? (Y/N)").Trim().ToUpper()
-    if ($Ready -ne "Y") {
+        Write-Host "  DESKTOP OAUTH (default)" -ForegroundColor White
+        Write-Host "  " + ("-" * 46) -ForegroundColor DarkGray
         Write-Host ""
-        Write-Host "  Start the Gateway first, then re-run Initialize-HALSSmartThingsOAuth." -ForegroundColor Yellow
+        Write-Host "  HALS uses https://httpbin.org/get as the redirect URI." -ForegroundColor Gray
+        Write-Host "  After browser login, copy the address bar — HALS detects it automatically." -ForegroundColor Gray
+        Write-Host ""
+        Write-Host "  Advanced tunnel setup: Initialize-SmartThings -UseTunnel" -ForegroundColor DarkGray
+        Write-Host ""
+
+        $Configuration.RedirectUri = "https://httpbin.org/get"
+        $Configuration | Add-Member -NotePropertyName CallbackMode -NotePropertyValue "Httpbin" -Force
+
+    }
+    else {
+
+        Write-Host "  TUNNEL OAUTH (advanced)" -ForegroundColor White
+        Write-Host "  " + ("-" * 46) -ForegroundColor DarkGray
+        Write-Host ""
+        Write-Host "  Start ngrok http 8000 and enter the public HTTPS URL below." -ForegroundColor Gray
+        Write-Host ""
+
+        do {
+            $RedirectUri = (Read-Host "  Public HTTPS redirect URI from ngrok/tunnel").Trim()
+
+            if ([string]::IsNullOrWhiteSpace($RedirectUri)) {
+                Write-Host "  Redirect URI cannot be empty." -ForegroundColor Red
+                continue
+            }
+
+            if (-not (Test-HALSSmartThingsRedirectUri -RedirectUri $RedirectUri)) {
+                Write-Host ("  " + (Get-HALSSmartThingsRedirectUriError -RedirectUri $RedirectUri)) -ForegroundColor Red
+                $RedirectUri = $null
+            }
+
+        } while ([string]::IsNullOrWhiteSpace($RedirectUri))
+
+        $Configuration.RedirectUri = $RedirectUri.Trim()
+        $Configuration | Add-Member -NotePropertyName CallbackMode -NotePropertyValue "Tunnel" -Force
+
+    }
+
+    Save-HALSOAuthConfiguration -Provider "SmartThings" -Configuration $Configuration
+
+    Write-Host ("  Redirect URI: " + $Configuration.RedirectUri) -ForegroundColor Green
+    Write-Host ""
+
+    Write-Host "  OAuth scopes must match your SmartThings app exactly." -ForegroundColor Gray
+    $ScopeText = (Read-Host "  Scopes [r:devices:* w:devices:* x:devices:*]").Trim()
+    if ([string]::IsNullOrWhiteSpace($ScopeText)) {
+        $Configuration.Scopes = @("r:devices:*", "w:devices:*", "x:devices:*")
+    }
+    else {
+        $Configuration.Scopes = @(
+            $ScopeText -split '\s+' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+        )
+    }
+
+    $HasCredentials = (Test-HALSOAuthCredentialsConfigured -Configuration $Configuration)
+
+    if (-not $HasCredentials) {
+
+        $Ready = (Read-Host "  Do you have OAuth Client ID and Secret from smartthings apps:oauth? (Y/N)").Trim().ToUpper()
+        if ($Ready -ne "Y") {
+            Write-Host ""
+            Write-Host "  Run smartthings apps:create first, then re-run Initialize-SmartThings." -ForegroundColor Yellow
+            return
+        }
+
+        Write-Host ""
+
+        do {
+            $ClientId = (Read-Host "  SmartThings OAuth Client ID").Trim()
+            if ([string]::IsNullOrWhiteSpace($ClientId)) {
+                Write-Host "  Client ID cannot be empty." -ForegroundColor Red
+            }
+        } while ([string]::IsNullOrWhiteSpace($ClientId))
+
+        do {
+            $ClientSecret = (Read-Host "  SmartThings OAuth Client Secret").Trim()
+            if ([string]::IsNullOrWhiteSpace($ClientSecret)) {
+                Write-Host "  Client Secret cannot be empty." -ForegroundColor Red
+            }
+        } while ([string]::IsNullOrWhiteSpace($ClientSecret))
+
+        $Configuration.ClientId = $ClientId
+        $Configuration.ClientSecret = $ClientSecret
+
+    }
+    else {
+
+        Write-Host "  Using saved SmartThings OAuth client credentials." -ForegroundColor DarkGray
+        Write-Host ""
+
+    }
+
+    $Configuration.Authorized = $false
+    $Configuration.AccessToken = ""
+    $Configuration.RefreshToken = ""
+    $Configuration.AccessTokenExpires = $null
+
+    Save-HALSOAuthConfiguration -Provider "SmartThings" -Configuration $Configuration
+
+    if ($UseTunnel) {
+        Start-HALSSmartThingsOAuthTunnelLogin -Configuration $Configuration
         return
     }
 
-    #----------------------------------------------------------
-    # Launch flow
-    #----------------------------------------------------------
-
-    Write-Host ""
-    Write-Host "  Opening SmartThings consent page..." -ForegroundColor Green
-    Write-Host ""
-    Write-Host "  After approving:" -ForegroundColor Gray
-    Write-Host ("    SmartThings redirects to : " + $Configuration.RedirectUri) -ForegroundColor DarkGray
-    Write-Host "    Gateway captures the code and completes the exchange." -ForegroundColor DarkGray
-    Write-Host ""
-
-    Start-HALSOAuthAuthorization -Provider "SmartThings" -State "SmartThings"
+    Start-HALSSmartThingsOAuthLogin -Configuration $Configuration
 
 }
 

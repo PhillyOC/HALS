@@ -33,6 +33,19 @@ $env:HALS_ROOT = $HALSRoot
 #
 Import-Module "$HALSRoot\Core\HALSRoot.psm1" -Force -WarningAction SilentlyContinue
 
+try {
+    Import-Module "$HALSRoot\Core\HALSGatewayManager.psm1" -Force -ErrorAction SilentlyContinue
+    if (Get-Command Initialize-HALSGateway -ErrorAction SilentlyContinue) {
+        Initialize-HALSGateway -Quiet | Out-Null
+    }
+    elseif (Get-Command Ensure-HALSGateway -ErrorAction SilentlyContinue) {
+        Ensure-HALSGateway -Quiet | Out-Null
+    }
+}
+catch {
+    # Gateway is optional at startup; OAuth setup will retry if needed.
+}
+
 #----------------------------------------------------------
 # Load Bootstrap Modules
 #----------------------------------------------------------
@@ -58,6 +71,14 @@ function CompareHALS { Compare-HALSSnapshots }
 function Knowledge   { Get-HALSKnownDevices | Format-Table -AutoSize }
 function Snapshots   { Get-HALSSnapshots }
 
+function global:Initiate-HALSDeviceProvider {
+    Initialize-HALSDeviceProvider @args
+}
+
+function global:Initiazize-HALSDeviceProvider {
+    Initialize-HALSDeviceProvider @args
+}
+
 function Version {
     Write-Host ""
     Write-Host "  HALS v$HALSVersion" -ForegroundColor Cyan
@@ -76,6 +97,8 @@ function Help {
     Write-Host "  -- Get started --" -ForegroundColor DarkGray
     Write-Host ("    " + "Initialize-HALSDeviceProvider".PadRight($CW)) -NoNewline
     Write-Host "Wizard: connect a device platform" -ForegroundColor DarkGray
+    Write-Host ("    " + "Reconnect-SmartThingsOAuth".PadRight($CW)) -NoNewline
+    Write-Host "Finish SmartThings OAuth after browser login" -ForegroundColor DarkGray
     Write-Host ("    " + "Initialize-HALSAI".PadRight($CW)) -NoNewline
     Write-Host "Wizard: choose and set up an AI provider" -ForegroundColor DarkGray
     Write-Host ("    " + "Switch-HALSAIProvider".PadRight($CW)) -NoNewline
@@ -139,6 +162,20 @@ if (Get-Command Get-HALSAIProviderRegistry -ErrorAction SilentlyContinue) {
     }
 }
 
+# Expose SmartThings OAuth reconnect at the prompt when credentials exist but tokens do not.
+if (-not (Get-Command Test-HALSSmartThingsOAuthPending -ErrorAction SilentlyContinue)) {
+    $SmartThingsModule = Join-Path $HALSRoot "Providers\SmartThings.psm1"
+    if (Test-Path -LiteralPath $SmartThingsModule) {
+        Import-Module $SmartThingsModule -Force -Global -WarningAction SilentlyContinue
+    }
+}
+
+if ((Get-Command Test-HALSSmartThingsOAuthPending -ErrorAction SilentlyContinue) -and
+    (Test-HALSSmartThingsOAuthPending)) {
+    Write-Host "  SmartThings OAuth is not finished. Run Reconnect-SmartThingsOAuth." -ForegroundColor Yellow
+    Write-Host ""
+}
+
 #----------------------------------------------------------
 # Snapshot Comparison
 #----------------------------------------------------------
@@ -155,7 +192,9 @@ CompareHALS
 Write-Host "  HALS Ready." -ForegroundColor Cyan
 Write-Host "  Enter " -NoNewline -ForegroundColor DarkGray
 Write-Host "Initialize-HALSDeviceProvider" -NoNewline -ForegroundColor White
-Write-Host " or " -NoNewline -ForegroundColor DarkGray
+Write-Host " (or " -NoNewline -ForegroundColor DarkGray
+Write-Host "Initiate-HALSDeviceProvider" -NoNewline -ForegroundColor DarkGray
+Write-Host ") or " -NoNewline -ForegroundColor DarkGray
 Write-Host "Initialize-HALSAI" -NoNewline -ForegroundColor White
 Write-Host " to get started adding your platforms and AI." -ForegroundColor DarkGray
 Write-Host ""

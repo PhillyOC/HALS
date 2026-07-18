@@ -1,61 +1,57 @@
 #==========================================================
 # HALS - SmartThings OAuth Completion
-# Version : 1.0.1
+# Version : 1.1.0
 #==========================================================
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
+if (-not (Get-Command Complete-HALSOAuthAuthorization -ErrorAction SilentlyContinue)) {
+    Import-Module (Join-Path (Get-HALSRoot) "Core\HALSOAuth.psm1") -Force
+}
+
 function Complete-HALSSmartThingsOAuth {
 
     param(
-
-        [Parameter(Mandatory)]
-        [string]$RedirectUrl
-
+        [string]$RedirectUrl,
+        [string]$AuthorizationCode
     )
 
+    if ([string]::IsNullOrWhiteSpace($RedirectUrl) -and
+        [string]::IsNullOrWhiteSpace($AuthorizationCode)) {
+        throw "Provide either -RedirectUrl or -AuthorizationCode."
+    }
+
     Write-Host ""
-    Write-Host "========================================" -ForegroundColor Cyan
-    Write-Host " SMARTTHINGS OAUTH COMPLETION" -ForegroundColor Cyan
-    Write-Host "========================================" -ForegroundColor Cyan
-    Write-Host ""
+    Write-Host "Completing SmartThings OAuth..." -ForegroundColor Cyan
 
-    $Uri = [System.Uri]$RedirectUrl
+    $Code = $AuthorizationCode
 
-    $Parameters = @{}
+    if ([string]::IsNullOrWhiteSpace($Code)) {
 
-    foreach ($Item in $Uri.Query.TrimStart('?').Split('&')) {
+        $Uri = [System.Uri]$RedirectUrl
+        $Parameters = @{}
 
-        if ($Item) {
+        foreach ($Item in $Uri.Query.TrimStart('?').Split('&')) {
 
-            $Pair = $Item.Split('=')
+            if (-not $Item) { continue }
 
+            $Pair = $Item.Split('=', 2)
             if ($Pair.Count -eq 2) {
-
-                $Parameters[$Pair[0]] = `
-                    [System.Uri]::UnescapeDataString($Pair[1])
-
+                $Parameters[$Pair[0]] = [System.Uri]::UnescapeDataString($Pair[1])
             }
 
         }
 
-    }
+        if ($Parameters.ContainsKey("error")) {
+            throw "SmartThings authorization failed: $($Parameters.error)"
+        }
 
-    #
-    # Check for error before checking for code.
-    # SmartThings returns ?error=access_denied etc.
-    #
+        if (-not $Parameters.ContainsKey("code")) {
+            throw "Authorization code not found in redirect URL."
+        }
 
-    if ($Parameters.ContainsKey("error")) {
-
-        throw "SmartThings authorization failed: $($Parameters.error)"
-
-    }
-
-    if (-not $Parameters.ContainsKey("code")) {
-
-        throw "Authorization code not found in redirect URL."
+        $Code = [string]$Parameters.code
 
     }
 
@@ -63,13 +59,13 @@ function Complete-HALSSmartThingsOAuth {
 
     Complete-HALSOAuthAuthorization `
         -Provider "SmartThings" `
-        -AuthorizationCode $Parameters.code
+        -AuthorizationCode $Code
 
     Write-Host ""
     Write-Host "SmartThings OAuth authorization completed." -ForegroundColor Green
     Write-Host "HALS will use OAuth on the next connection." -ForegroundColor DarkGreen
+    Write-Host ""
 
 }
 
-Export-ModuleMember `
-    -Function Complete-HALSSmartThingsOAuth
+Export-ModuleMember -Function Complete-HALSSmartThingsOAuth

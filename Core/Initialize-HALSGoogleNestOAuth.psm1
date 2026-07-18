@@ -6,6 +6,14 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
+if (-not (Get-Command Ensure-HALSOAuthConfiguration -ErrorAction SilentlyContinue)) {
+    Import-Module (Join-Path (Get-HALSRoot) "Core\HALSOAuth.psm1") -Force
+}
+
+if (-not (Get-Command Ensure-HALSGateway -ErrorAction SilentlyContinue)) {
+    Import-Module (Join-Path (Get-HALSRoot) "Core\HALSGatewayManager.psm1") -Force
+}
+
 function Initialize-HALSGoogleNestOAuth {
 
     Write-Host ""
@@ -31,9 +39,13 @@ function Initialize-HALSGoogleNestOAuth {
     Write-Host "       https://console.cloud.google.com/apis/credentials" -ForegroundColor Cyan
     Write-Host ""
 
+    if (-not (Get-Command Ensure-HALSOAuthConfiguration -ErrorAction SilentlyContinue)) {
+        Import-Module (Join-Path (Get-HALSRoot) "Core\HALSOAuth.psm1") -Force
+    }
+
     $Config = $null
-    try { $Config = Get-HALSOAuthConfiguration -Provider "GoogleNest" } catch {}
-    $RedirectUri = if ($Config) { $Config.RedirectUri } else { "(configure RedirectUri in Secrets\OAuth\GoogleNest.json)" }
+    try { $Config = Ensure-HALSOAuthConfiguration -Provider "GoogleNest" } catch { $Config = $null }
+    $RedirectUri = if ($Config) { $Config.RedirectUri } else { "http://127.0.0.1:8000/" }
 
     Write-Host "  Required OAuth client settings:" -ForegroundColor Gray
     Write-Host "    Application type   : Web application" -ForegroundColor Gray
@@ -64,37 +76,15 @@ function Initialize-HALSGoogleNestOAuth {
     # Save config
     #----------------------------------------------------------
 
-    $Config = Get-HALSOAuthConfiguration -Provider "GoogleNest"
+    $Config = Ensure-HALSOAuthConfiguration -Provider "GoogleNest"
     $Config.ClientId     = $ClientId
     $Config.ClientSecret = $ClientSecret
     $Config.ProjectId    = $ProjectId
     $Config.AuthorizationEndpoint = "https://nestservices.google.com/partnerconnections/$ProjectId/auth"
     Save-HALSOAuthConfiguration -Provider "GoogleNest" -Configuration $Config
 
-    #----------------------------------------------------------
-    # Gateway reminder
-    #----------------------------------------------------------
-
     Write-Host ""
-    Write-Host "  BEFORE CONTINUING" -ForegroundColor White
-    Write-Host "  " + ("-" * 46) -ForegroundColor DarkGray
-    Write-Host ""
-    Write-Host "  Make sure the HALS Gateway is running." -ForegroundColor Yellow
-    Write-Host "  Open a second terminal and run:" -ForegroundColor Yellow
-    Write-Host ""
-    Write-Host ("    & '" + (Get-HALSRoot) + "\Gateway\HALSGateway.ps1'") -ForegroundColor Cyan
-    Write-Host ""
-
-    $GwReady = (Read-Host "  Gateway running? (Y/N)").Trim().ToUpper()
-    if ($GwReady -ne "Y") {
-        Write-Host ""
-        Write-Host "  Start the Gateway first, then re-run Initialize-HALSGoogleNestOAuth." -ForegroundColor Yellow
-        return
-    }
-
-    #----------------------------------------------------------
-    # Launch flow
-    #----------------------------------------------------------
+    Initialize-HALSGateway | Out-Null
 
     Write-Host ""
     Write-Host "  Opening Google consent page..." -ForegroundColor Green

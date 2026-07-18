@@ -6,4 +6,4 @@ pwsh.exe ^
     -NoProfile ^
     -ExecutionPolicy Bypass ^
     -NoExit ^
-    -File "%~dp0Start-HALS.ps1"
+    -File "%~dp0Scripts\Start-HALSEnvironment.ps1"

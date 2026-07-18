@@ -52,4 +52,53 @@ function Get-HALSRoot {
 
 }
 
-Export-ModuleMember -Function Get-HALSRoot, Test-HALSRootPath
+function Get-HALSSanitizedSecret {
+
+    param(
+        [AllowEmptyString()]
+        [string]$Value
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Value)) {
+        return $Value
+    }
+
+    $Clean = -join (
+        $Value.ToCharArray() |
+            Where-Object { [int][char]$_ -ge 32 -or $_ -eq "`t" }
+    )
+
+    return $Clean.Trim()
+
+}
+
+function Test-HALSNetworkHostInput {
+
+    param(
+        [Parameter(Mandatory)]
+        [string]$HostName
+    )
+
+    $Candidate = $HostName.Trim().Trim('"').Trim("'")
+
+    if ([string]::IsNullOrWhiteSpace($Candidate)) {
+        return $false
+    }
+
+    if ($Candidate -match '[/\\:@?#]') {
+        return $false
+    }
+
+    if ($Candidate -match '\.(json|txt|exe|pdf|csv|xml)$') {
+        return $false
+    }
+
+    if ($Candidate.Length -gt 253) {
+        return $false
+    }
+
+    return $true
+
+}
+
+Export-ModuleMember -Function Get-HALSRoot, Test-HALSRootPath, Get-HALSSanitizedSecret, Test-HALSNetworkHostInput

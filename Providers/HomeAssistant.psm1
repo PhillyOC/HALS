@@ -265,10 +265,10 @@ function Initialize-HomeAssistant {
     Write-Host "HALS Home Assistant setup" -ForegroundColor Cyan
     Write-Host ""
 
-    $HostName = (Read-Host "Home Assistant host [homeassistant.local]").Trim()
+    $HostName = (Read-Host "Home Assistant host [homeassistant.local]").Trim().Trim('"').Trim("'")
     $PortText = (Read-Host "Port [8123]").Trim()
     $UseSsl = (Read-Host "Use HTTPS? (Y/N) [N]").Trim()
-    $Token = (Read-Host "Long-lived access token" -MaskInput).Trim()
+    $Token = Get-HALSSanitizedSecret -Value (Read-Host "Long-lived access token" -MaskInput)
 
     if ([string]::IsNullOrWhiteSpace($HostName)) { $HostName = "homeassistant.local" }
     $Port = if ($PortText) { [int]$PortText } else { 8123 }
@@ -276,6 +276,10 @@ function Initialize-HomeAssistant {
 
     if ([string]::IsNullOrWhiteSpace($Token)) {
         throw "Home Assistant token cannot be empty."
+    }
+
+    if ($Token -match '^\s|\s$|[\x00-\x1F]') {
+        throw "Home Assistant token contains invalid characters. Paste the token again without extra spaces or hidden characters."
     }
 
     $TestConfig = @{
