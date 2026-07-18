@@ -1,18 +1,22 @@
 #==========================================================
 # HALS - Evidence Module
-# Version : 2.0.0
+# Version : 2.1.0
 #==========================================================
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-$EvidenceFile = "$(Get-HALSRoot)\Knowledge\Evidence.json"
+function Get-HALSEvidenceFile {
+    Join-Path (Get-HALSRoot) "Knowledge\Evidence.json"
+}
 
 #----------------------------------------------------------
 # Initialize
 #----------------------------------------------------------
 
 function Initialize-HALSEvidence {
+
+    $EvidenceFile = Get-HALSEvidenceFile
 
     if (!(Test-Path $EvidenceFile)) {
 
@@ -33,7 +37,7 @@ function Get-HALSEvidence {
     Initialize-HALSEvidence
 
     Read-HALSCollection `
-        -Path $EvidenceFile
+        -Path (Get-HALSEvidenceFile)
 
 }
 
@@ -72,7 +76,7 @@ function Add-HALSEvidence {
     }
 
     Add-HALSCollectionItem `
-        -Path $EvidenceFile `
+        -Path (Get-HALSEvidenceFile) `
         -Item $Item
 
 }
@@ -109,7 +113,7 @@ function Find-HALSEvidence {
 function Clear-HALSEvidence {
 
     Write-HALSCollection `
-        -Path $EvidenceFile `
+        -Path (Get-HALSEvidenceFile) `
         -Collection @()
 
 }

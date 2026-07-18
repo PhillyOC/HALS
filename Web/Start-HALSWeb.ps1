@@ -22,7 +22,8 @@ if ($PSVersionTable.PSVersion.Major -lt 7) {
     exit 1
 }
 
-$HALSRoot = if ($env:HALS_ROOT) { $env:HALS_ROOT } else { Split-Path -Parent $PSScriptRoot }
+# Always bind to this tree so a moved/copied HALS folder stays portable.
+$HALSRoot = Split-Path -Parent $PSScriptRoot
 $env:HALS_ROOT = $HALSRoot
 Set-Location $HALSRoot
 

@@ -149,4 +149,6 @@ function Initialize-HALSMistral {
 
 }
 
-Export-ModuleMember -Function Initialize-HALSMistral
+function Initialize-Mistral { Initialize-HALSMistral }
+
+Export-ModuleMember -Function Initialize-HALSMistral, Initialize-Mistral

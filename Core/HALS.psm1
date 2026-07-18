@@ -6,7 +6,9 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-$SnapshotFolder = "$(Get-HALSRoot)\Snapshots"
+function Get-HALSSnapshotFolder {
+    Join-Path (Get-HALSRoot) "Snapshots"
+}
 
 #
 # HA domains that represent physical or controllable devices.
@@ -60,13 +62,38 @@ function Get-HALSStatus {
 # Snapshot - Save
 #----------------------------------------------------------
 
+function Clear-HALSOldSnapshots {
+
+    param(
+        [int]$Keep = 30
+    )
+
+    if ($Keep -lt 2) {
+        $Keep = 2
+    }
+
+    $Snapshots = @(Get-HALSSnapshots)
+    if ($Snapshots.Count -le $Keep) {
+        return
+    }
+
+    $Snapshots |
+        Select-Object -Skip $Keep |
+        Remove-Item -Force -ErrorAction SilentlyContinue
+
+}
+
 function Save-HALSSnapshot {
 
     param(
         [Parameter(Mandatory)]
         [AllowEmptyCollection()]
-        [array]$Devices
+        [array]$Devices,
+
+        [int]$Keep = 30
     )
+
+    $SnapshotFolder = Get-HALSSnapshotFolder
 
     if (!(Test-Path $SnapshotFolder)) {
         New-Item -ItemType Directory -Force -Path $SnapshotFolder | Out-Null
@@ -79,6 +106,8 @@ function Save-HALSSnapshot {
     $Json = ConvertTo-Json -InputObject @($Devices) -Depth 10
     Set-Content -Path $File -Value $Json
 
+    Clear-HALSOldSnapshots -Keep $Keep
+
     return $File
 
 }
@@ -88,6 +117,8 @@ function Save-HALSSnapshot {
 #----------------------------------------------------------
 
 function Get-HALSSnapshots {
+
+    $SnapshotFolder = Get-HALSSnapshotFolder
 
     if (!(Test-Path $SnapshotFolder)) {
         return @()
@@ -278,6 +309,7 @@ function Invoke-HALSDiscovery {
 Export-ModuleMember `
     -Function Get-HALSStatus,
               Save-HALSSnapshot,
+              Clear-HALSOldSnapshots,
               Get-HALSSnapshots,
               Compare-HALSSnapshots,
               Invoke-HALSDiscovery

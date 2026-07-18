@@ -1,6 +1,6 @@
 #==========================================================
 # HALS - Startup Display
-# Version : 2.0.0
+# Version : 3.0.0
 #==========================================================
 
 Set-StrictMode -Version Latest
@@ -10,118 +10,153 @@ if (-not (Get-Command Get-HALSAIProviderRegistry -ErrorAction SilentlyContinue))
     Import-Module "$(Get-HALSRoot)\AI\HALSAIProviderRegistry.psm1" -Global
 }
 
-#----------------------------------------------------------
-# Helper
-#----------------------------------------------------------
-
 function Get-Divider {
     "  " + ("-" * 46)
 }
 
+function Get-HALSDeviceProviderSetupCommandName {
+
+    param([Parameter(Mandatory)]$Provider)
+
+    $Setup = @($Provider.SetupCommands) | Select-Object -First 1
+    if ($Setup -and $Setup.Name) {
+        return [string]$Setup.Name
+    }
+
+    return "Initialize-HALSDeviceProvider"
+}
+
 #----------------------------------------------------------
-# Integrations Panel
+# Unified providers panel
+# Status on the left, setup command on the right.
 #----------------------------------------------------------
 
-function Write-HALSIntegrationsPanel {
+function Write-HALSProvidersPanel {
 
     param(
-        [Parameter(Mandatory)]
-        $ProviderHealth
+        $ProviderHealth = $null,
+        $AIConfiguration = $null
     )
 
+    if ($null -eq $ProviderHealth -and (Get-Command Get-HALSProviderHealth -ErrorAction SilentlyContinue)) {
+        $ProviderHealth = Get-HALSProviderHealth
+    }
+
+    if ($null -eq $AIConfiguration -and (Get-Command Get-HALSAIConfiguration -ErrorAction SilentlyContinue)) {
+        $AIConfiguration = Get-HALSAIConfiguration -Optional
+    }
+
+    $CommandWidth = 28
+
     Write-Host ""
-    Write-Host "  INTEGRATIONS" -ForegroundColor Cyan
+    Write-Host "  DEVICE PROVIDERS" -ForegroundColor Cyan
     Write-Host (Get-Divider) -ForegroundColor DarkGray
+    Write-Host ""
+    Write-Host ("    " + "Initialize-HALSDeviceProvider".PadRight($CommandWidth)) -NoNewline -ForegroundColor White
+    Write-Host "Choose a platform to connect" -ForegroundColor DarkGray
     Write-Host ""
 
     foreach ($Integration in @(Get-HALSDeviceProviders)) {
 
-        $Entry  = $ProviderHealth[$Integration.Key]
-
-        if ($null -eq $Entry) {
-            # Not configured -- show as not configured placeholder
-            Write-Host ("    [ ] " + $Integration.Name.PadRight(22)) -NoNewline -ForegroundColor DarkGray
-            Write-Host "Not configured" -ForegroundColor DarkGray
-            continue
+        $SetupCommand = Get-HALSDeviceProviderSetupCommandName -Provider $Integration
+        $Entry = $null
+        if ($ProviderHealth -is [hashtable] -or $ProviderHealth -is [System.Collections.IDictionary]) {
+            if ($ProviderHealth.ContainsKey($Integration.Key)) {
+                $Entry = $ProviderHealth[$Integration.Key]
+            }
         }
 
-        $Status = $Entry.Status
-
-        if ($Status -eq "NotConfigured") {
-            Write-Host ("    [ ] " + $Integration.Name.PadRight(22)) -NoNewline -ForegroundColor DarkGray
-            Write-Host "Not configured" -ForegroundColor DarkGray
+        $Status = if ($Entry -and $Entry.PSObject.Properties["Status"]) {
+            [string]$Entry.Status
         }
-        elseif ($Status -eq "Healthy") {
-            Write-Host ("    [+] " + $Integration.Name.PadRight(22)) -NoNewline -ForegroundColor Green
-            Write-Host "Connected" -ForegroundColor Green
+        elseif ($Entry -and ($Entry -is [hashtable] -or $Entry -is [System.Collections.IDictionary]) -and $Entry.ContainsKey("Status")) {
+            [string]$Entry.Status
         }
         else {
-            Write-Host ("    [!] " + $Integration.Name.PadRight(22)) -NoNewline -ForegroundColor Yellow
-            Write-Host $Status -ForegroundColor Yellow
+            "NotConfigured"
         }
 
+        if ($Status -eq "Healthy") {
+            Write-Host ("    [+] " + $Integration.Name.PadRight(20)) -NoNewline -ForegroundColor Green
+            Write-Host ($SetupCommand.PadRight($CommandWidth)) -NoNewline -ForegroundColor DarkGray
+            Write-Host "Connected" -ForegroundColor Green
+        }
+        elseif ($Status -eq "NotConfigured" -or [string]::IsNullOrWhiteSpace($Status)) {
+            Write-Host ("    [ ] " + $Integration.Name.PadRight(20)) -NoNewline -ForegroundColor DarkGray
+            Write-Host ($SetupCommand.PadRight($CommandWidth)) -NoNewline -ForegroundColor DarkGray
+            Write-Host "Not configured" -ForegroundColor DarkGray
+        }
+        else {
+            Write-Host ("    [!] " + $Integration.Name.PadRight(20)) -NoNewline -ForegroundColor Yellow
+            Write-Host ($SetupCommand.PadRight($CommandWidth)) -NoNewline -ForegroundColor DarkGray
+            Write-Host $Status -ForegroundColor Yellow
+        }
     }
 
     Write-Host ""
-
-}
-
-#----------------------------------------------------------
-# AI Providers Panel
-#
-# Iterates the providers exposed by the AI registry.
-#----------------------------------------------------------
-
-function Write-HALSAIPanel {
-
-    param(
-        [Parameter(Mandatory)]
-        $AIConfiguration
-    )
-
     Write-Host "  AI PROVIDERS" -ForegroundColor Cyan
     Write-Host (Get-Divider) -ForegroundColor DarkGray
     Write-Host ""
+    Write-Host ("    " + "Initialize-HALSAI".PadRight($CommandWidth)) -NoNewline -ForegroundColor White
+    Write-Host "Choose an AI provider" -ForegroundColor DarkGray
+    Write-Host ("    " + "Switch-HALSAIProvider".PadRight($CommandWidth)) -NoNewline -ForegroundColor DarkGray
+    Write-Host "Switch active AI (-Provider <name>)" -ForegroundColor DarkGray
+    Write-Host ""
 
-    $ActiveProvider = $AIConfiguration.Provider
+    $ActiveProvider = if ($AIConfiguration -and $AIConfiguration.PSObject.Properties["Provider"]) {
+        $AIConfiguration.Provider
+    }
+    else {
+        $null
+    }
 
     foreach ($Provider in @(Get-HALSAIProviderRegistry)) {
 
-        $Config = if ($AIConfiguration.PSObject.Properties[$Provider.Key]) {
+        $Config = if ($AIConfiguration -and $AIConfiguration.PSObject.Properties[$Provider.Key]) {
             $AIConfiguration.($Provider.Key)
         }
         else {
             $null
         }
 
-        $HasModel = $Config -and
-            $Config.PSObject.Properties["Model"] -and
-            -not [string]::IsNullOrWhiteSpace($Config.Model)
-
         $Configured = $Config -and
             (Test-HALSAIProviderConfigured -Provider $Provider.Key -Configuration $Config)
 
+        $SetupCommand = $Provider.SetupCommand
+
         if ($Configured) {
+            $HasModel = $Config.PSObject.Properties["Model"] -and
+                -not [string]::IsNullOrWhiteSpace([string]$Config.Model)
+            $Model = if ($HasModel) { " [$($Config.Model)]" } else { "" }
+            $Tag = if ($ActiveProvider -eq $Provider.Key) { " active" } else { "" }
 
-            $IsActive = $ActiveProvider -eq $Provider.Key
-            $Model    = if ($HasModel) { "  [$($Config.Model)]" } else { "" }
-            $Tag      = if ($IsActive) { "  active" } else { "" }
-
-            Write-Host ("    [+] " + $Provider.Name.PadRight(22)) -NoNewline -ForegroundColor Green
-            Write-Host ("Ready" + $Model + $Tag) -ForegroundColor $(if ($IsActive) { "Cyan" } else { "Green" })
-
+            Write-Host ("    [+] " + $Provider.Name.PadRight(20)) -NoNewline -ForegroundColor Green
+            Write-Host ($SetupCommand.PadRight($CommandWidth)) -NoNewline -ForegroundColor DarkGray
+            Write-Host ("Ready$Model$Tag") -ForegroundColor $(if ($ActiveProvider -eq $Provider.Key) { "Cyan" } else { "Green" })
         }
         else {
-
-            Write-Host ("    [ ] " + $Provider.Name.PadRight(22)) -NoNewline -ForegroundColor DarkGray
+            Write-Host ("    [ ] " + $Provider.Name.PadRight(20)) -NoNewline -ForegroundColor DarkGray
+            Write-Host ($SetupCommand.PadRight($CommandWidth)) -NoNewline -ForegroundColor DarkGray
             Write-Host "Not configured" -ForegroundColor DarkGray
-
         }
-
     }
 
     Write-Host ""
+}
 
+# Keep older names as thin wrappers for any callers.
+function Write-HALSIntegrationsPanel {
+
+    param([Parameter(Mandatory)]$ProviderHealth)
+
+    Write-HALSProvidersPanel -ProviderHealth $ProviderHealth
+}
+
+function Write-HALSAIPanel {
+
+    param([Parameter(Mandatory)]$AIConfiguration)
+
+    # AI block is included in Write-HALSProvidersPanel.
 }
 
 #----------------------------------------------------------
@@ -140,11 +175,6 @@ function Write-HALSInventorySummary {
     Write-Host ""
 
     $Devices = @($Inventory.Devices)
-
-    #
-    # Domain is optional provider metadata. Guard access so
-    # providers without it remain compatible under StrictMode.
-    #
 
     function Get-Domain ($Device) {
         if ($Device.PSObject.Properties["Domain"]) { return $Device.Domain }
@@ -206,10 +236,6 @@ function Write-HALSInventorySummary {
         $Devices | Where-Object { (Get-Domain $_) -eq "update" }
     ).Count
 
-    #
-    # Two-column display - only rows with count > 0
-    #
-
     $Rows = @(
         @{ Label = "Lights";          Count = $Lights        }
         @{ Label = "Sensors";         Count = $Sensors       }
@@ -238,14 +264,9 @@ function Write-HALSInventorySummary {
         }
 
         $i++
-
     }
 
     if ($i % 2 -ne 0) { Write-Host "" }
-
-    #
-    # Network infrastructure summary line
-    #
 
     Write-Host ""
 
@@ -262,6 +283,7 @@ function Write-HALSInventorySummary {
 }
 
 Export-ModuleMember `
-    -Function Write-HALSIntegrationsPanel,
+    -Function Write-HALSProvidersPanel,
+              Write-HALSIntegrationsPanel,
               Write-HALSAIPanel,
               Write-HALSInventorySummary

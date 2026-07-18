@@ -6,13 +6,17 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-$ObservationFile = "$(Get-HALSRoot)\Knowledge\Observations.json"
+function Get-HALSObservationFile {
+    Join-Path (Get-HALSRoot) "Knowledge\Observations.json"
+}
 
 #----------------------------------------------------------
 # Initialize
 #----------------------------------------------------------
 
 function Initialize-HALSObservations {
+
+    $ObservationFile = Get-HALSObservationFile
 
     if (!(Test-Path $ObservationFile)) {
 
@@ -30,7 +34,7 @@ function Get-HALSObservations {
 
     Initialize-HALSObservations
 
-    $Json = Get-Content $ObservationFile -Raw
+    $Json = Get-Content (Get-HALSObservationFile) -Raw
 
     if ([string]::IsNullOrWhiteSpace($Json)) {
 
@@ -98,7 +102,7 @@ function Add-HALSObservation {
 
     $Observations |
         ConvertTo-Json -Depth 20 |
-        Set-Content $ObservationFile
+        Set-Content (Get-HALSObservationFile)
 
     return $Observation
 
@@ -134,7 +138,7 @@ function Find-HALSObservation {
 
 function Clear-HALSObservations {
 
-    Set-Content -Path $ObservationFile -Value "[]"
+    Set-Content -Path (Get-HALSObservationFile) -Value "[]"
 
 }
 

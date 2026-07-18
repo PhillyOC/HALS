@@ -1,6 +1,6 @@
 #==========================================================
 # HALS - AI Inventory Serializer
-# Version : 2.0.0
+# Version : 2.1.0
 #==========================================================
 
 Set-StrictMode -Version Latest
@@ -15,17 +15,28 @@ function ConvertTo-HALSAIInventory {
 
     )
 
-    $Assets = @(foreach ($Asset in @($Inventory.Assets)) {
+    $SourceAssets = @()
+
+    if ($Inventory.PSObject.Properties["Assets"] -and $null -ne $Inventory.Assets) {
+        $SourceAssets = @($Inventory.Assets | Where-Object { $null -ne $_ })
+    }
+
+    $Assets = @(foreach ($Asset in $SourceAssets) {
 
         #
         # Status
         #
 
         $Status = $null
+        $Entities = @()
 
-        if ($Asset.Entities) {
+        if ($Asset.PSObject.Properties["Entities"] -and $null -ne $Asset.Entities) {
+            $Entities = @($Asset.Entities)
+        }
 
-            $StatusEntity = $Asset.Entities |
+        if ($Entities.Count -gt 0) {
+
+            $StatusEntity = $Entities |
                 Where-Object {
 
                     $_.Name -match "switch|contact|motion|presence|lock|alarm|smoke|water|temperature"
@@ -45,7 +56,7 @@ function ConvertTo-HALSAIInventory {
 
         $Facts = @()
 
-        foreach ($Entity in $Asset.Entities) {
+        foreach ($Entity in $Entities) {
 
             if ($null -eq $Entity.Value) {
                 continue
@@ -111,6 +122,19 @@ function ConvertTo-HALSAIInventory {
 
         }
 
+        $Sources = @()
+        if ($Asset.PSObject.Properties["Sources"] -and $null -ne $Asset.Sources) {
+            $Sources = @($Asset.Sources | Sort-Object -Unique)
+        }
+
+        $CapabilityNames = @()
+        if ($Asset.PSObject.Properties["Capabilities"] -and $null -ne $Asset.Capabilities) {
+            $CapabilityNames = @(
+                $Asset.Capabilities |
+                Select-Object -ExpandProperty Name -Unique
+            )
+        }
+
         #
         # AI Asset
         #
@@ -123,12 +147,9 @@ function ConvertTo-HALSAIInventory {
 
             Manufacturer = $Asset.Manufacturer
 
-            Providers = @($Asset.Sources | Sort-Object -Unique)
+            Providers = $Sources
 
-            Capabilities = @(
-                $Asset.Capabilities |
-                Select-Object -ExpandProperty Name -Unique
-            )
+            Capabilities = $CapabilityNames
 
             Status = $Status
 
@@ -146,9 +167,9 @@ function ConvertTo-HALSAIInventory {
 
         Generated = Get-Date
 
-        AssetCount = $Assets.Count
+        AssetCount = @($Assets).Count
 
-        Assets = $Assets
+        Assets = @($Assets)
 
     }
 

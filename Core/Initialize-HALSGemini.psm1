@@ -142,4 +142,6 @@ function Initialize-HALSGemini {
 
 }
 
-Export-ModuleMember -Function Initialize-HALSGemini
+function Initialize-Gemini { Initialize-HALSGemini }
+
+Export-ModuleMember -Function Initialize-HALSGemini, Initialize-Gemini

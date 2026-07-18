@@ -10,6 +10,11 @@
 
 $Host.UI.RawUI.WindowTitle = "HALS"
 
+# Bind to this tree so a moved/copied HALS folder stays portable.
+$HALSRoot = Split-Path -Parent $PSScriptRoot
+$env:HALS_ROOT = $HALSRoot
+Set-Location $HALSRoot
+
 Write-Host ""
 Write-Host "==========================================" -ForegroundColor Cyan
 Write-Host " HALS Gateway Environment" -ForegroundColor Cyan
@@ -26,7 +31,7 @@ $Gateways = @(
 
     @{
         Name     = "HALS OAuth Gateway"
-        Path     = "$env:HALS_ROOT\Gateway\HALSGateway.ps1"
+        Path     = "$HALSRoot\Gateway\HALSGateway.ps1"
         Optional = $true
     }
 
@@ -109,4 +114,4 @@ if ($AnyLaunched) {
 # Hand off to the main HALS session
 #----------------------------------------------------------------------
 
-& "$env:HALS_ROOT\Start-HALS.ps1"
+& "$HALSRoot\Start-HALS.ps1"

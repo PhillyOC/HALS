@@ -14,7 +14,8 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-$_HALSRoot = if ($env:HALS_ROOT) { $env:HALS_ROOT } else { Split-Path -Parent (Split-Path -Parent $PSCommandPath) }
+$_HALSRoot = Split-Path -Parent (Split-Path -Parent $PSCommandPath)
+$env:HALS_ROOT = $_HALSRoot
 Import-Module "$_HALSRoot\Core\HALSRoot.psm1"                         -Force
 Import-Module "$(Get-HALSRoot)\Core\HALSOAuth.psm1"                   -Force
 Import-Module "$(Get-HALSRoot)\Core\HALSOAuthToken.psm1"              -Force

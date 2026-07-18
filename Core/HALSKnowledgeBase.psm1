@@ -1,18 +1,22 @@
 #==========================================================
 # HALS - Knowledge Base
-# Version : 1.0.0
+# Version : 1.1.0
 #==========================================================
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-$KnowledgeRoot = "$(Get-HALSRoot)\Knowledge"
+function Get-HALSKnowledgeRoot {
+    Join-Path (Get-HALSRoot) "Knowledge"
+}
 
 #----------------------------------------------------------
 # Ensure Knowledge Store Exists
 #----------------------------------------------------------
 
 function Initialize-HALSKnowledgeBase {
+
+    $KnowledgeRoot = Get-HALSKnowledgeRoot
 
     if (!(Test-Path $KnowledgeRoot)) {
 
@@ -39,7 +43,7 @@ function Get-HALSKnowledgeFile {
     )
 
     $Path = Join-Path `
-        $KnowledgeRoot `
+        (Get-HALSKnowledgeRoot) `
         "$Name.json"
 
     if (!(Test-Path $Path)) {
@@ -77,7 +81,7 @@ function Save-HALSKnowledgeFile {
     )
 
     $Path = Join-Path `
-        $KnowledgeRoot `
+        (Get-HALSKnowledgeRoot) `
         "$Name.json"
 
     $Object |
@@ -101,7 +105,7 @@ function Test-HALSKnowledgeFile {
 
     Test-Path (
         Join-Path `
-            $KnowledgeRoot `
+            (Get-HALSKnowledgeRoot) `
             "$Name.json"
     )
 
@@ -114,7 +118,7 @@ function Test-HALSKnowledgeFile {
 function Get-HALSKnowledgeFiles {
 
     Get-ChildItem `
-        $KnowledgeRoot `
+        (Get-HALSKnowledgeRoot) `
         -Filter *.json |
         Sort-Object Name |
         Select-Object -ExpandProperty BaseName

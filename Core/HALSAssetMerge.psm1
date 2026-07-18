@@ -81,7 +81,8 @@ function Merge-HALSAssets {
 
     }
 
-    return $Assets.Values
+    # Always return Object[] so zero- and one-asset inventories keep .Count under StrictMode.
+    return @($Assets.Values)
 
 }
 

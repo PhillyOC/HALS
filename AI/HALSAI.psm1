@@ -136,7 +136,7 @@ function Ask-HALSAI {
 
         $Plan = ConvertFrom-HALSAIPlan -Json $Json
 
-        if ($Plan.Actions.Count -eq 0) {
+        if (@($Plan.Actions).Count -eq 0) {
 
             Write-Warning "Execution plan contains zero actions."
             return

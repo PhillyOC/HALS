@@ -1,3 +1,6 @@
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
 function Connect-UniFi {
     param(
         [Parameter(Mandatory)]
@@ -16,6 +19,24 @@ function Connect-UniFi {
         [string]$Password
     )
 
+    # Accept host, host:port, or full https://host:port URLs.
+    $NormalizedHost = $Host.Trim()
+    $NormalizedPort = $Port
+
+    if ($NormalizedHost -match '^(?i)https?://') {
+        $Uri = [Uri]$NormalizedHost
+        $NormalizedHost = $Uri.Host
+        if (-not $Uri.IsDefaultPort -and $Uri.Port -gt 0) {
+            $NormalizedPort = $Uri.Port
+        }
+    }
+    elseif ($NormalizedHost -match '^(?<name>[^:/]+):(?<port>\d+)$') {
+        $NormalizedHost = $Matches.name
+        $NormalizedPort = [int]$Matches.port
+    }
+
+    $NormalizedHost = $NormalizedHost.TrimEnd('/')
+
     $Body = @{
         username = $Username
         password = $Password
@@ -24,15 +45,20 @@ function Connect-UniFi {
 
     Invoke-RestMethod `
         -Method Post `
-        -Uri "https://$Host`:$Port/api/login" `
+        -Uri "https://${NormalizedHost}:${NormalizedPort}/api/login" `
         -SkipCertificateCheck `
         -ContentType "application/json" `
         -Body $Body `
-        -SessionVariable Session | Out-Null
+        -SessionVariable Session |
+        Out-Null
+
+    if (-not $Session) {
+        throw "UniFi login failed for ${NormalizedHost}:${NormalizedPort}."
+    }
 
     [PSCustomObject]@{
-        Host      = $Host
-        Port      = $Port
+        Host      = $NormalizedHost
+        Port      = $NormalizedPort
         Site      = $Site
         Session   = $Session
         Connected = Get-Date
@@ -158,20 +184,30 @@ function Initialize-UniFi {
     if ([string]::IsNullOrWhiteSpace($Site)) { $Site = "default" }
     $Port = if ($PortText) { [int]$PortText } else { 8443 }
 
-    $TestConnection = Connect-UniFi `
-        -Host $HostName `
-        -Port $Port `
-        -Site $Site `
-        -Username $Username `
-        -Password $Password
+    try {
+        $TestConnection = Connect-UniFi `
+            -Host $HostName `
+            -Port $Port `
+            -Site $Site `
+            -Username $Username `
+            -Password $Password
+    }
+    catch {
+        Write-Host ""
+        Write-Host "UniFi connection failed. Configuration was not saved." -ForegroundColor Yellow
+        Write-Host $_.Exception.Message -ForegroundColor DarkGray
+        Write-Host "Tip: enter just the hostname or IP (for example unifi.local), not a full URL." -ForegroundColor DarkGray
+        Write-Host ""
+        throw
+    }
 
     if (-not (Test-Path $Folder)) {
         New-Item -ItemType Directory -Path $Folder -Force | Out-Null
     }
 
     @{
-        Host     = $HostName
-        Port     = $Port
+        Host     = $TestConnection.Host
+        Port     = $TestConnection.Port
         Site     = $Site
         Username = $Username
         Password = $Password

@@ -1,18 +1,22 @@
 #==========================================================
 # HALS - Experiment Module
-# Version : 1.0.0
+# Version : 1.1.0
 #==========================================================
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-$ExperimentFile = "$(Get-HALSRoot)\Knowledge\Experiments.json"
+function Get-HALSExperimentFile {
+    Join-Path (Get-HALSRoot) "Knowledge\Experiments.json"
+}
 
 #----------------------------------------------------------
 # Initialize
 #----------------------------------------------------------
 
 function Initialize-HALSExperiments {
+
+    $ExperimentFile = Get-HALSExperimentFile
 
     if (!(Test-Path $ExperimentFile)) {
 
@@ -30,7 +34,7 @@ function Get-HALSExperiments {
 
     Initialize-HALSExperiments
 
-    $Json = Get-Content $ExperimentFile -Raw
+    $Json = Get-Content (Get-HALSExperimentFile) -Raw
 
     if ([string]::IsNullOrWhiteSpace($Json)) {
 
@@ -76,7 +80,7 @@ function Add-HALSExperiment {
 
     )
 
-    $Experiments = Get-HALSExperiments
+    $Experiments = @(Get-HALSExperiments)
 
     $Experiment = [PSCustomObject]@{
 
@@ -96,7 +100,7 @@ function Add-HALSExperiment {
 
     $Experiments |
         ConvertTo-Json -Depth 20 |
-        Set-Content $ExperimentFile
+        Set-Content (Get-HALSExperimentFile)
 
     return $Experiment
 
@@ -131,7 +135,7 @@ function Find-HALSExperiment {
 
 function Clear-HALSExperiments {
 
-    Set-Content -Path $ExperimentFile -Value "[]"
+    Set-Content -Path (Get-HALSExperimentFile) -Value "[]"
 
 }
 

@@ -39,7 +39,8 @@ The web API can scan networks and control devices and does not currently provide
 
 ## Configuration
 
-- `HALS_ROOT` optionally overrides the repository root.
+- HALS is folder-portable: launch with `Start-HALS.ps1`, `Start-HALS.cmd`, or `HALS.ps1` from the copy you want to use. Launchers bind the session to that folder, so you can move or copy the tree between drives without editing paths.
+- `HALS_ROOT` is set automatically for the session. A stale machine/user `HALS_ROOT` pointing at an old location is ignored when that path is no longer a valid HALS tree.
 - `HALS_UNIFI_HOST`, `HALS_UNIFI_PORT`, `HALS_UNIFI_SITE`, `HALS_UNIFI_USERNAME`, and `HALS_UNIFI_PASSWORD` may be used instead of `Secrets\UniFi.json`.
 - `Config\AI.json` selects and configures the AI provider.
 - `Secrets\` contains local provider credentials and OAuth tokens.

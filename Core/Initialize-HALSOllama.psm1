@@ -206,4 +206,6 @@ function Initialize-HALSOllama {
 
 }
 
-Export-ModuleMember -Function Initialize-HALSOllama
+function Initialize-Ollama { Initialize-HALSOllama }
+
+Export-ModuleMember -Function Initialize-HALSOllama, Initialize-Ollama

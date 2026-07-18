@@ -5,7 +5,7 @@
 
 Clear-Host
 
-$HALSVersion = "0.8.0"
+$HALSVersion = "0.9.0"
 
 #----------------------------------------------------------
 # HALS Root
@@ -15,9 +15,9 @@ $HALSRoot = Split-Path -Parent $PSCommandPath
 Set-Location $HALSRoot
 
 #
-# Publish the root path as an environment variable so every
-# module loaded by HALS.ps1 can call Get-HALSRoot() without
-# needing to know where the folder is installed.
+# Always bind this session to the folder that was launched.
+# This keeps HALS portable across drives and ignores any stale
+# machine/user HALS_ROOT left behind from an older location.
 #
 $env:HALS_ROOT = $HALSRoot
 
@@ -67,38 +67,33 @@ function Help {
 
     $CW = 34
 
-    Write-Host "  -- General --" -ForegroundColor DarkGray
-    Write-Host ("    " + "Ask-HALSAI".PadRight($CW))             -NoNewline; Write-Host "Natural language control" -ForegroundColor DarkGray
-    Write-Host ("    " + "HALS".PadRight($CW))                   -NoNewline; Write-Host "Run inventory scan" -ForegroundColor DarkGray
-    Write-Host ("    " + "CompareHALS".PadRight($CW))            -NoNewline; Write-Host "Compare latest snapshots" -ForegroundColor DarkGray
-    Write-Host ("    " + "Knowledge".PadRight($CW))              -NoNewline; Write-Host "Show known devices" -ForegroundColor DarkGray
-    Write-Host ("    " + "Snapshots".PadRight($CW))              -NoNewline; Write-Host "List snapshots" -ForegroundColor DarkGray
-    Write-Host ("    " + "Help".PadRight($CW))                   -NoNewline; Write-Host "Show this help" -ForegroundColor DarkGray
-    Write-Host ("    " + "Version".PadRight($CW))                -NoNewline; Write-Host "Show version" -ForegroundColor DarkGray
+    Write-Host "  -- Get started --" -ForegroundColor DarkGray
+    Write-Host ("    " + "Initialize-HALSDeviceProvider".PadRight($CW)) -NoNewline
+    Write-Host "Wizard: connect a device platform" -ForegroundColor DarkGray
+    Write-Host ("    " + "Initialize-HALSAI".PadRight($CW)) -NoNewline
+    Write-Host "Wizard: choose and set up an AI provider" -ForegroundColor DarkGray
+    Write-Host ("    " + "Switch-HALSAIProvider".PadRight($CW)) -NoNewline
+    Write-Host "Switch active AI (-Provider <name>)" -ForegroundColor DarkGray
     Write-Host ""
 
-    Write-Host "  -- AI Providers --" -ForegroundColor DarkGray
-    Write-Host ("    " + "Initialize-HALSAI".PadRight($CW))             -NoNewline; Write-Host "Choose and set up an AI provider" -ForegroundColor DarkGray
-    foreach ($Provider in @(Get-HALSAIProviderRegistry)) {
-        Write-Host ("    " + $Provider.SetupCommand.PadRight($CW)) -NoNewline
-        Write-Host "Set up $($Provider.Name)" -ForegroundColor DarkGray
-    }
-    Write-Host ("    " + "Switch-HALSAIProvider".PadRight($CW))           -NoNewline; Write-Host "Switch active provider (-Provider <name>)" -ForegroundColor DarkGray
-    Write-Host ""
-
-    Write-Host "  -- Device Integrations --" -ForegroundColor DarkGray
-    Write-Host ("    " + "Initialize-HALSDeviceProvider".PadRight($CW))    -NoNewline; Write-Host "Choose and set up a device provider" -ForegroundColor DarkGray
-    foreach ($Setup in @(Get-HALSDeviceProviderSetupCommands)) {
-        Write-Host ("    " + $Setup.Name.PadRight($CW)) -NoNewline
-        Write-Host $Setup.Description -ForegroundColor DarkGray
-    }
+    Write-Host "  -- Everyday --" -ForegroundColor DarkGray
+    Write-Host ("    " + "Ask-HALSAI".PadRight($CW))  -NoNewline; Write-Host "Natural language control" -ForegroundColor DarkGray
+    Write-Host ("    " + "HALS".PadRight($CW))        -NoNewline; Write-Host "Run inventory scan" -ForegroundColor DarkGray
+    Write-Host ("    " + "CompareHALS".PadRight($CW)) -NoNewline; Write-Host "Compare latest snapshots" -ForegroundColor DarkGray
+    Write-Host ("    " + "Knowledge".PadRight($CW))   -NoNewline; Write-Host "Show known devices" -ForegroundColor DarkGray
+    Write-Host ("    " + "Snapshots".PadRight($CW))   -NoNewline; Write-Host "List snapshots" -ForegroundColor DarkGray
+    Write-Host ("    " + "Version".PadRight($CW))     -NoNewline; Write-Host "Show version" -ForegroundColor DarkGray
     Write-Host ""
 
     Write-Host "  -- HALSLab --" -ForegroundColor DarkGray
-    Write-Host ("    " + "Start-HALSExperiment".PadRight($CW))   -NoNewline; Write-Host "New experiment" -ForegroundColor DarkGray
-    Write-Host ("    " + "Get-HALSExperiments".PadRight($CW))    -NoNewline; Write-Host "View experiment history" -ForegroundColor DarkGray
-    Write-Host ("    " + "Get-HALSObservations".PadRight($CW))   -NoNewline; Write-Host "View observations" -ForegroundColor DarkGray
-    Write-Host ("    " + "Get-HALSEvidence".PadRight($CW))       -NoNewline; Write-Host "View evidence" -ForegroundColor DarkGray
+    Write-Host ("    " + "Start-HALSExperiment".PadRight($CW))  -NoNewline; Write-Host "New experiment" -ForegroundColor DarkGray
+    Write-Host ("    " + "Get-HALSExperiments".PadRight($CW))   -NoNewline; Write-Host "View experiment history" -ForegroundColor DarkGray
+    Write-Host ("    " + "Get-HALSObservations".PadRight($CW))  -NoNewline; Write-Host "View observations" -ForegroundColor DarkGray
+    Write-Host ("    " + "Get-HALSEvidence".PadRight($CW))      -NoNewline; Write-Host "View evidence" -ForegroundColor DarkGray
+    Write-Host ""
+
+    Write-Host "  Provider setup commands are listed next to each platform" -ForegroundColor DarkGray
+    Write-Host "  on startup. Prefer the wizards above when you are just getting started." -ForegroundColor DarkGray
     Write-Host ""
 
 }
@@ -124,6 +119,16 @@ Write-Host ""
 
 HALS
 
+# Make sure AI setup wizards are available at the interactive prompt.
+# (Initialize-HALSAI loads them on demand; these make direct commands work too.)
+if (Get-Command Get-HALSAIProviderRegistry -ErrorAction SilentlyContinue) {
+    foreach ($AIProvider in @(Get-HALSAIProviderRegistry)) {
+        if (-not (Get-Command $AIProvider.SetupCommand -ErrorAction SilentlyContinue)) {
+            Import-HALSAIProvider -Provider $AIProvider.Key -Setup
+        }
+    }
+}
+
 #----------------------------------------------------------
 # Snapshot Comparison
 #----------------------------------------------------------
@@ -137,8 +142,10 @@ CompareHALS
 # Ready
 #----------------------------------------------------------
 
-Write-Host "  HALS Ready. " -NoNewline -ForegroundColor Cyan
-Write-Host "Type " -NoNewline -ForegroundColor DarkGray
-Write-Host "Help" -NoNewline -ForegroundColor White
-Write-Host " to view available commands." -ForegroundColor DarkGray
+Write-Host "  HALS Ready." -ForegroundColor Cyan
+Write-Host "  Enter " -NoNewline -ForegroundColor DarkGray
+Write-Host "Initialize-HALSDeviceProvider" -NoNewline -ForegroundColor White
+Write-Host " or " -NoNewline -ForegroundColor DarkGray
+Write-Host "Initialize-HALSAI" -NoNewline -ForegroundColor White
+Write-Host " to get started adding your platforms and AI." -ForegroundColor DarkGray
 Write-Host ""

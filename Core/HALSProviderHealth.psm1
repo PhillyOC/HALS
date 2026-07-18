@@ -1,18 +1,22 @@
 #==========================================================
 # HALS - Provider Health
-# Version : 1.0.0
+# Version : 1.1.0
 #==========================================================
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-$ProviderHealthFile = "$(Get-HALSRoot)\Knowledge\ProviderHealth.json"
+function Get-HALSProviderHealthFile {
+    Join-Path (Get-HALSRoot) "Knowledge\ProviderHealth.json"
+}
 
 #----------------------------------------------------------
 # Initialize
 #----------------------------------------------------------
 
 function Initialize-HALSProviderHealth {
+
+    $ProviderHealthFile = Get-HALSProviderHealthFile
 
     if (!(Test-Path $ProviderHealthFile)) {
 
@@ -32,7 +36,7 @@ function Get-HALSProviderHealth {
 
     Initialize-HALSProviderHealth
 
-    $Json = Get-Content $ProviderHealthFile -Raw
+    $Json = Get-Content (Get-HALSProviderHealthFile) -Raw
 
     if ([string]::IsNullOrWhiteSpace($Json)) {
 
@@ -78,7 +82,7 @@ function Set-HALSProviderHealth {
 
     $Health |
         ConvertTo-Json -Depth 10 |
-        Set-Content $ProviderHealthFile
+        Set-Content (Get-HALSProviderHealthFile)
 
 }
 
@@ -115,7 +119,7 @@ function Clear-HALSProviderHealth {
 
     @{} |
         ConvertTo-Json |
-        Set-Content $ProviderHealthFile
+        Set-Content (Get-HALSProviderHealthFile)
 
 }
 

@@ -1,43 +1,55 @@
 #==========================================================
 # HALS - Root Path Resolver
-# Version : 1.0.0
+# Version : 1.1.0
 #
 # Provides Get-HALSRoot so every module resolves paths
-# relative to wherever HALS is installed, rather than
-# hardcoding an installation directory.
+# relative to the HALS folder that was launched, rather
+# than hardcoding a drive letter or install directory.
 #
 # Priority order:
-#   1. $env:HALS_ROOT  (set this to move HALS anywhere)
-#   2. The parent folder of this file at runtime
+#   1. $env:HALS_ROOT when it points at a valid HALS tree
+#   2. The parent folder of this module (Core\)
 #
-# To use a custom installation directory:
-#   [System.Environment]::SetEnvironmentVariable(
-#       "HALS_ROOT", "<path-to-HALS>", "Machine")
-# Or for the current session only:
-#   $env:HALS_ROOT = "<path-to-HALS>"
+# Launchers (Start-HALS.ps1, HALS.ps1, Start-HALSWeb.ps1)
+# always set $env:HALS_ROOT from their own location so the
+# tree remains portable when copied or moved between drives.
 #==========================================================
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-function Get-HALSRoot {
+function Test-HALSRootPath {
 
-    #
-    # If the environment variable is set, use it.
-    #
+    param([Parameter(Mandatory)][string]$Path)
 
-    if (-not [string]::IsNullOrWhiteSpace($env:HALS_ROOT)) {
-        return $env:HALS_ROOT.TrimEnd('\').TrimEnd('/')
+    if ([string]::IsNullOrWhiteSpace($Path)) {
+        return $false
     }
 
-    #
-    # Fall back to the directory containing this module,
-    # which is always Core\ -- so go up one level.
-    #
+    if (-not (Test-Path -LiteralPath $Path -PathType Container)) {
+        return $false
+    }
+
+    return (
+        (Test-Path -LiteralPath (Join-Path $Path "HALS.ps1") -PathType Leaf) -or
+        (Test-Path -LiteralPath (Join-Path $Path "Start-HALS.ps1") -PathType Leaf)
+    )
+}
+
+function Get-HALSRoot {
 
     $ModuleDir = Split-Path -Parent $PSCommandPath
-    return Split-Path -Parent $ModuleDir
+    $ModuleRoot = Split-Path -Parent $ModuleDir
+
+    if (-not [string]::IsNullOrWhiteSpace($env:HALS_ROOT)) {
+        $Candidate = $env:HALS_ROOT.TrimEnd('\').TrimEnd('/')
+        if (Test-HALSRootPath -Path $Candidate) {
+            return $Candidate
+        }
+    }
+
+    return $ModuleRoot
 
 }
 
-Export-ModuleMember -Function Get-HALSRoot
+Export-ModuleMember -Function Get-HALSRoot, Test-HALSRootPath

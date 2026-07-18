@@ -148,4 +148,6 @@ function Initialize-HALSTogetherAI {
 
 }
 
-Export-ModuleMember -Function Initialize-HALSTogetherAI
+function Initialize-TogetherAI { Initialize-HALSTogetherAI }
+
+Export-ModuleMember -Function Initialize-HALSTogetherAI, Initialize-TogetherAI

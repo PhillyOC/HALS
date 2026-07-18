@@ -177,4 +177,6 @@ function Initialize-HALSClaude {
 
 }
 
-Export-ModuleMember -Function Initialize-HALSClaude
+function Initialize-Claude { Initialize-HALSClaude }
+
+Export-ModuleMember -Function Initialize-HALSClaude, Initialize-Claude

@@ -69,14 +69,13 @@ function Get-HALSInventory {
         }
     }
 
-    $Assets = Merge-HALSAssets `
-        -Devices $Devices
+    $Assets = @(Merge-HALSAssets -Devices @($Devices))
 
     [PSCustomObject]@{
-        Devices        = $Devices
+        Devices        = @($Devices)
         Assets         = $Assets
-        Infrastructure = $Infrastructure
-        Clients        = $Clients
+        Infrastructure = @($Infrastructure)
+        Clients        = @($Clients)
         ProviderData   = $ProviderData
     }
 }
