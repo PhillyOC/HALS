@@ -59,7 +59,8 @@ function New-HALSShortcut {
         [Parameter(Mandatory)][string]$ShortcutPath,
         [Parameter(Mandatory)][string]$TargetPath,
         [Parameter(Mandatory)][string]$WorkingDirectory,
-        [string]$Description = "HALS"
+        [string]$Description = "HALS",
+        [string]$IconLocation = ""
     )
 
     $Folder = Split-Path -Parent $ShortcutPath
@@ -73,6 +74,9 @@ function New-HALSShortcut {
     $Shortcut.WorkingDirectory = $WorkingDirectory
     $Shortcut.WindowStyle = 1
     $Shortcut.Description = $Description
+    if (-not [string]::IsNullOrWhiteSpace($IconLocation) -and (Test-Path -LiteralPath $IconLocation)) {
+        $Shortcut.IconLocation = "$IconLocation,0"
+    }
     $Shortcut.Save()
 }
 
@@ -265,17 +269,21 @@ try {
         "pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File `"%~dp0Uninstall-HALS.ps1`" -InstallPath `"$InstallPath`""
     ) | Set-Content -LiteralPath $UninstallCmd -Encoding ASCII
 
+    $IconPath = Join-Path $InstallPath "Assets\HALS.ico"
+
     New-HALSShortcut `
         -ShortcutPath (Join-Path $StartMenuDir "HALS.lnk") `
         -TargetPath $Launcher `
         -WorkingDirectory $InstallPath `
-        -Description "Home Automation & Logging System"
+        -Description "Home Automation & Logging System" `
+        -IconLocation $IconPath
 
     New-HALSShortcut `
         -ShortcutPath (Join-Path $StartMenuDir "Uninstall HALS.lnk") `
         -TargetPath $UninstallCmd `
         -WorkingDirectory $InstallPath `
-        -Description "Uninstall HALS"
+        -Description "Uninstall HALS" `
+        -IconLocation $IconPath
 
     if ($AddDesktopShortcut) {
         $Desktop = [Environment]::GetFolderPath("Desktop")
@@ -283,7 +291,8 @@ try {
             -ShortcutPath (Join-Path $Desktop "HALS.lnk") `
             -TargetPath $Launcher `
             -WorkingDirectory $InstallPath `
-            -Description "Home Automation & Logging System"
+            -Description "Home Automation & Logging System" `
+            -IconLocation $IconPath
     }
 
     $InstallInfo = [PSCustomObject]@{

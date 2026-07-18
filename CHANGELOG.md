@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.1 — 2026-07-18
+
+### Added
+- Official HALS application icon for the Windows installer, Start Menu, and desktop shortcuts
+- `Remove-HALSAIProvider` and `Remove-HALSDeviceProvider` to disconnect integrations cleanly
+
+### Changed
+- Installer and shortcut branding now use `Assets\HALS.ico`
+
 ## 1.0.0 — 2026-07-17
 
 First public packaged release.
