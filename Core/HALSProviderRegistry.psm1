@@ -158,6 +158,64 @@ function Get-HALSDeviceProviderSetupCommands {
     @($Commands)
 }
 
+function Get-HALSDeviceProviderSecretPaths {
+
+    param([Parameter(Mandatory)][string]$Key)
+
+    $Root = Get-HALSRoot
+    @(
+        Join-Path $Root "Secrets\$Key.json"
+        Join-Path $Root "Secrets\OAuth\$Key.json"
+    )
+}
+
+function Remove-HALSDeviceProvider {
+
+    param(
+        [Parameter(Mandatory)]
+        [string]$Provider
+    )
+
+    $Metadata = Get-HALSDeviceProvider -Key $Provider
+    if (-not $Metadata) {
+        $Valid = (@(Get-HALSDeviceProviders).Key -join ", ")
+        throw "Unknown device provider: '$Provider'. Valid values: $Valid."
+    }
+
+    $Removed = @()
+    foreach ($Path in @(Get-HALSDeviceProviderSecretPaths -Key $Metadata.Key)) {
+        if (Test-Path -LiteralPath $Path) {
+            Remove-Item -LiteralPath $Path -Force
+            $Removed += $Path
+        }
+    }
+
+    if (Get-Command Set-HALSProviderHealth -ErrorAction SilentlyContinue) {
+        Set-HALSProviderHealth `
+            -Provider $Metadata.Key `
+            -Status "NotConfigured" `
+            -Message "$($Metadata.Name) configuration was removed."
+    }
+
+    Write-Host ""
+    if ($Removed.Count -eq 0) {
+        Write-Host "$($Metadata.Name) had no local credential files to remove." -ForegroundColor DarkGray
+    }
+    else {
+        Write-Host "Removed $($Metadata.Name) configuration:" -ForegroundColor Green
+        foreach ($Path in $Removed) {
+            Write-Host "  $Path" -ForegroundColor DarkGray
+        }
+    }
+
+    if ($Metadata.Key -eq "UniFi") {
+        Write-Host "Note: UniFi environment variables (HALS_UNIFI_*) are not cleared automatically." -ForegroundColor DarkGray
+    }
+
+    Write-Host "Run HALS to refresh inventory, or Initialize-$($Metadata.Key) / Initialize-HALSDeviceProvider to reconnect." -ForegroundColor DarkGray
+    Write-Host ""
+}
+
 function Initialize-HALSDeviceProvider {
 
     $Providers = @(Get-HALSDeviceProviders | Where-Object { @($_.SetupCommands).Count -gt 0 })
@@ -206,4 +264,6 @@ Export-ModuleMember -Function `
     Get-HALSRegisteredProviderPermissions,
     Invoke-HALSRegisteredProviderAction,
     Get-HALSDeviceProviderSetupCommands,
+    Get-HALSDeviceProviderSecretPaths,
+    Remove-HALSDeviceProvider,
     Initialize-HALSDeviceProvider

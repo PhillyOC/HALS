@@ -68,7 +68,18 @@ Example files contain placeholders only. Keep local files at their non-`.example
 
 Run `Initialize-WiZ` (or choose WiZ Pro from `Initialize-HALSDeviceProvider`) and enter the client ID and redirect URI registered with [WiZ Pro](https://docs.pro.wizconnected.com/#introduction). HALS opens the OAuth-PKCE authorization page, stores the resulting tokens in `Secrets\OAuth\WiZ.json`, inventories the authorized building topology, and exposes supported light operations to HALSAI. WiZ Pro credentials are issued by WiZ; this official cloud integration is separate from the undocumented consumer-bulb LAN protocol.
 
-## Uninstall
+## Remove an integration
+
+Inside a HALS session:
+
+```powershell
+Remove-HALSAIProvider -Provider Ollama
+Remove-HALSDeviceProvider -Provider PhilipsHue
+```
+
+AI removal edits `Config\AI.json` (and deletes it if nothing remains). Device removal deletes that provider's `Secrets\*.json` / `Secrets\OAuth\*.json` files. Run `HALS` afterward to refresh inventory.
+
+## Uninstall HALS itself
 
 - Start Menu → **Uninstall HALS**, or
 - Run `Install\Uninstall-HALS.cmd` from the install folder, or

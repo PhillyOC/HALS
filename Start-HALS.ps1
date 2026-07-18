@@ -80,6 +80,10 @@ function Help {
     Write-Host "Wizard: choose and set up an AI provider" -ForegroundColor DarkGray
     Write-Host ("    " + "Switch-HALSAIProvider".PadRight($CW)) -NoNewline
     Write-Host "Switch active AI (-Provider <name>)" -ForegroundColor DarkGray
+    Write-Host ("    " + "Remove-HALSDeviceProvider".PadRight($CW)) -NoNewline
+    Write-Host "Remove a device integration (-Provider <name>)" -ForegroundColor DarkGray
+    Write-Host ("    " + "Remove-HALSAIProvider".PadRight($CW)) -NoNewline
+    Write-Host "Remove an AI provider (-Provider <name>)" -ForegroundColor DarkGray
     Write-Host ""
 
     Write-Host "  -- Everyday --" -ForegroundColor DarkGray
