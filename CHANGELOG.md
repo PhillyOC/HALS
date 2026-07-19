@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.0.11 — 2026-07-19
+
+Session reliability and SmartThings/Home Assistant setup polish after the 1.0.10 UniFi release.
+
+### Fixed
+- **Interactive session commands** — `Start-HALSEnvironment.ps1` dot-sources `Start-HALS.ps1` so `HALS`, `CompareHALS`, `Knowledge`, `Version`, and setup helpers remain in scope after launch from `Start-HALS.cmd`.
+- **Global command aliases** — `HALSHelp` (plus `hals`, `comparehals`, `knowledge`, `snapshots`, `halshelp` aliases); avoids collision with PowerShell's built-in `help` / `Get-Help`.
+- **SmartThings OAuth priority** — connect uses OAuth only when credentials are fully authorized; incomplete OAuth shows a clear reconnect message instead of silently falling back to a stale PAT.
+- **SmartThings PAT setup** — legacy token entry uses `Read-HALSSecretInput` (full paste/clipboard) instead of `-MaskInput` truncation on PowerShell 7.
+- **SmartThings OAuth completion** — removes legacy `Secrets\SmartThings.json` PAT file when OAuth completes successfully.
+
+### Changed
+- **Home Assistant setup** — long-lived access token entry uses `Read-HALSSecretInput` for reliable paste on PowerShell 7.
+- **`Docs/HALS-Reference.txt`** — updated public reference for 1.0.10+ providers, AI backends, and commands.
+- **`Docs/HALS-Intro.txt`** — new short intro for GitHub, forums, and social posts.
+
 ## 1.0.10 — 2026-07-19
 
 Stable UniFi release for legacy Cloud Key Gen1 and ui.com Site Manager API keys. Setup, reconnect on startup, and inventory scan are verified end-to-end.

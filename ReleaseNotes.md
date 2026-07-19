@@ -1,4 +1,4 @@
-# HALS 1.0.10 — UniFi-stable release
+# HALS 1.0.11 — Session & setup polish
 
 **Home Automation & Logging System** for Windows + PowerShell 7. Connect SmartThings, UniFi, Home Assistant, Hue, Nest, and more; control devices with natural language via HALSAI.
 
@@ -6,8 +6,8 @@
 
 | Asset | Use case |
 |-------|----------|
-| **[HALS-Setup-1.0.10.exe](https://github.com/PhillyOC/HALS/releases/download/v1.0.10/HALS-Setup-1.0.10.exe)** | Recommended Windows installer (no admin required) |
-| **[HALS-1.0.10.zip](https://github.com/PhillyOC/HALS/releases/download/v1.0.10/HALS-1.0.10.zip)** | Portable copy — unzip anywhere and run `Start-HALS.cmd` |
+| **[HALS-Setup-1.0.11.exe](https://github.com/PhillyOC/HALS/releases/download/v1.0.11/HALS-Setup-1.0.11.exe)** | Recommended Windows installer (no admin required) |
+| **[HALS-1.0.11.zip](https://github.com/PhillyOC/HALS/releases/download/v1.0.11/HALS-1.0.11.zip)** | Portable copy — unzip anywhere and run `Start-HALS.cmd` |
 
 Default install location: `%LOCALAPPDATA%\Programs\HALS`
 
@@ -24,29 +24,30 @@ irm https://github.com/PhillyOC/HALS/releases/latest/download/Install-FromGitHub
 3. Run **`Initialize-HALSDeviceProvider`** to connect SmartThings, UniFi, Hue, etc.
 4. Run **`Initialize-HALSAI`** to set up OpenAI, Claude, Gemini, or Ollama.
 5. Use **`Ask-HALSAI`** for natural-language control.
+6. Type **`HALSHelp`** for the HALS command list (not PowerShell's built-in `help`).
 
-## Highlights (1.0.10)
+## Highlights (1.0.11)
 
-### UniFi (verified on Cloud Key Gen1)
-- **Local admin login** for legacy controllers — port 443/8443 auto-detection, site picker, startup reconnect
-- **ui.com Site Manager API keys** — optional cloud path for accounts without local Integration keys
-- **Inventory on startup** — gateways, access points, switches, and clients populate HOME OVERVIEW
-- **PS 7 secret paste fix** — clipboard/visible input for API keys and passwords (no more one-character `-MaskInput` bug)
+### Interactive session
+- **Session commands work from Start Menu launch** — `HALS`, `CompareHALS`, `Knowledge`, `Version`, and OAuth helpers stay available in the interactive session.
+- **`HALSHelp`** — quick command reference; use instead of lowercase `help` (which runs `Get-Help`).
 
-### Prior release features (1.0.5 → 1.0.8)
-- SmartThings OAuth via httpbin desktop flow
-- OAuth gateway auto-start on port 8000
-- Provider setup wizards with validation
+### SmartThings
+- **OAuth preferred over stale PAT** — incomplete OAuth prompts reconnect instead of silently using an old personal access token.
+- **Reliable token paste** — legacy PAT setup uses clipboard/visible paste (PowerShell 7 `-MaskInput` fix).
+- **OAuth completion** — removes legacy PAT file when OAuth succeeds.
+
+### Home Assistant
+- **Long-lived token paste** — setup uses the same reliable secret input as UniFi and SmartThings.
+
+### Documentation
+- Updated **`Docs/HALS-Reference.txt`** and new **`Docs/HALS-Intro.txt`** for public sharing.
+
+## Prior highlights (1.0.10)
+
+- UniFi Gen1 Cloud Key and ui.com Site Manager API key support
+- SmartThings OAuth desktop flow with auto-start gateway
 - Windows installer + portable zip + GitHub bootstrap install
-
-## UniFi setup tips
-
-| Controller | Auth | HALS option |
-|------------|------|-------------|
-| Cloud Key Gen1 (Network 7.x) | Local admin password | Option **2** — host `192.168.x.x`, port **443** or **8443** |
-| ui.com API key | Site Manager + Network scope | Option **1** — paste full key via clipboard |
-
-UniFi is **read-only** in HALS (inventory visibility). Device control uses SmartThings, Hue, WiZ, etc.
 
 ## Requirements
 

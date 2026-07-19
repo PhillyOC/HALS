@@ -128,7 +128,7 @@ if ($AnyLaunched) {
 }
 
 #----------------------------------------------------------------------
-# Hand off to the main HALS session
+# Hand off to the main HALS session (dot-source so HALS, Help, etc. stay in scope)
 #----------------------------------------------------------------------
 
-& "$HALSRoot\Start-HALS.ps1"
+. "$HALSRoot\Start-HALS.ps1"

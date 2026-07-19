@@ -66,33 +66,12 @@ function Get-Sep { "  " + ("-" * 48) }
 # Session Commands
 #----------------------------------------------------------
 
-function HALS        { & "$HALSRoot\HALS.ps1" }
-function CompareHALS { Compare-HALSSnapshots }
-function Knowledge   { Get-HALSKnownDevices | Format-Table -AutoSize }
-function Snapshots   { Get-HALSSnapshots }
+function global:HALS        { & "$HALSRoot\HALS.ps1" }
+function global:CompareHALS { Compare-HALSSnapshots }
+function global:Knowledge   { Get-HALSKnownDevices | Format-Table -AutoSize }
+function global:Snapshots   { Get-HALSSnapshots }
 
-function global:Initiate-HALSDeviceProvider {
-    Initialize-HALSDeviceProvider @args
-}
-
-function global:Initiazize-HALSDeviceProvider {
-    Initialize-HALSDeviceProvider @args
-}
-
-function global:Reconnect-SmartThingsOAuth {
-    if (-not (Get-Command Restore-SmartThingsOAuth -ErrorAction SilentlyContinue)) {
-        Import-Module "$HALSRoot\Providers\SmartThings.psm1" -Force -Global -WarningAction SilentlyContinue
-    }
-    Restore-SmartThingsOAuth @args
-}
-
-function Version {
-    Write-Host ""
-    Write-Host "  HALS v$HALSVersion" -ForegroundColor Cyan
-    Write-Host ""
-}
-
-function Help {
+function global:HALSHelp {
 
     Write-Host ""
     Write-Host "  HALS COMMANDS" -ForegroundColor Cyan
@@ -123,6 +102,7 @@ function Help {
     Write-Host ("    " + "Knowledge".PadRight($CW))   -NoNewline; Write-Host "Show known devices" -ForegroundColor DarkGray
     Write-Host ("    " + "Snapshots".PadRight($CW))   -NoNewline; Write-Host "List snapshots" -ForegroundColor DarkGray
     Write-Host ("    " + "Version".PadRight($CW))     -NoNewline; Write-Host "Show version" -ForegroundColor DarkGray
+    Write-Host ("    " + "HALSHelp".PadRight($CW))   -NoNewline; Write-Host "Show this command list" -ForegroundColor DarkGray
     Write-Host ""
 
     Write-Host "  -- HALSLab --" -ForegroundColor DarkGray
@@ -135,8 +115,38 @@ function Help {
     Write-Host "  Provider setup commands are listed next to each platform" -ForegroundColor DarkGray
     Write-Host "  on startup. Prefer the wizards above when you are just getting started." -ForegroundColor DarkGray
     Write-Host ""
+    Write-Host "  Note: lowercase help runs PowerShell Get-Help. Use HALSHelp here." -ForegroundColor DarkGray
+    Write-Host ""
 
 }
+
+function global:Initiate-HALSDeviceProvider {
+    Initialize-HALSDeviceProvider @args
+}
+
+function global:Initiazize-HALSDeviceProvider {
+    Initialize-HALSDeviceProvider @args
+}
+
+function global:Reconnect-SmartThingsOAuth {
+    if (-not (Get-Command Restore-SmartThingsOAuth -ErrorAction SilentlyContinue)) {
+        Import-Module "$HALSRoot\Providers\SmartThings.psm1" -Force -Global -WarningAction SilentlyContinue
+    }
+    Restore-SmartThingsOAuth @args
+}
+
+function global:Version {
+    Write-Host ""
+    Write-Host "  HALS v$HALSVersion" -ForegroundColor Cyan
+    Write-Host ""
+}
+
+Set-Alias -Name hals -Value HALS -Scope Global -Force -ErrorAction SilentlyContinue
+Set-Alias -Name comparehals -Value CompareHALS -Scope Global -Force -ErrorAction SilentlyContinue
+Set-Alias -Name knowledge -Value Knowledge -Scope Global -Force -ErrorAction SilentlyContinue
+Set-Alias -Name snapshots -Value Snapshots -Scope Global -Force -ErrorAction SilentlyContinue
+Set-Alias -Name halshelp -Value HALSHelp -Scope Global -Force -ErrorAction SilentlyContinue
+
 
 #----------------------------------------------------------
 # Banner
@@ -197,6 +207,7 @@ CompareHALS
 #----------------------------------------------------------
 
 Write-Host "  HALS Ready." -ForegroundColor Cyan
+Write-Host "  Commands: HALS, Ask-HALSAI, CompareHALS, Knowledge, HALSHelp" -ForegroundColor DarkGray
 Write-Host "  Enter " -NoNewline -ForegroundColor DarkGray
 Write-Host "Initialize-HALSDeviceProvider" -NoNewline -ForegroundColor White
 Write-Host " (or " -NoNewline -ForegroundColor DarkGray

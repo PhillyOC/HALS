@@ -66,6 +66,12 @@ function Complete-HALSSmartThingsOAuth {
         -Provider "SmartThings" `
         -AuthorizationCode $Code
 
+    $PatPath = Join-Path (Get-HALSRoot) "Secrets\SmartThings.json"
+    if (Test-Path -LiteralPath $PatPath) {
+        Remove-Item -LiteralPath $PatPath -Force
+        Write-Host "Removed legacy SmartThings PAT file (OAuth is now active)." -ForegroundColor DarkGray
+    }
+
     Write-Host ""
     Write-Host "SmartThings OAuth authorization completed." -ForegroundColor Green
     Write-Host "HALS will use OAuth on the next connection." -ForegroundColor DarkGreen

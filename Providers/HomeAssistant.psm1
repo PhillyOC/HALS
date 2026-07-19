@@ -268,7 +268,10 @@ function Initialize-HomeAssistant {
     $HostName = (Read-Host "Home Assistant host [homeassistant.local]").Trim().Trim('"').Trim("'")
     $PortText = (Read-Host "Port [8123]").Trim()
     $UseSsl = (Read-Host "Use HTTPS? (Y/N) [N]").Trim()
-    $Token = Get-HALSSanitizedSecret -Value (Read-Host "Long-lived access token" -MaskInput)
+    $Token = Read-HALSSecretInput `
+        -Prompt "Long-lived access token" `
+        -Hint "Copy the full Home Assistant long-lived access token from your profile." `
+        -MinimumLength 20
 
     if ([string]::IsNullOrWhiteSpace($HostName)) { $HostName = "homeassistant.local" }
     $Port = if ($PortText) { [int]$PortText } else { 8123 }

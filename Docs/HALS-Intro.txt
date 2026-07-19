@@ -1,0 +1,37 @@
+HALS — Home Automation & Logging System
+========================================
+
+Your smart home, one PowerShell session.
+
+HALS is a free, open-source Windows app (PowerShell 7) that
+pulls together everything on your network — lights, sensors,
+thermostats, UniFi clients, Home Assistant entities — into
+one unified inventory. Then HALSAI lets you ask questions
+and control devices in plain English.
+
+Why it's exciting
+  • Modular — connect only what you use (SmartThings, UniFi,
+    Home Assistant, Philips Hue, Google Nest, WiZ Pro,
+    Ecobee, Pushbullet, and more on the way)
+  • HALSAI — switch between OpenAI, Claude, Gemini, Together
+    AI, Mistral, or local Ollama; HALS executes safely
+  • Portable — zip, installer, or git clone; no cloud lock-in
+  • Web panel — local dashboard at localhost:8080
+  • Snapshots — see what changed on your network over time
+
+Try it in 60 seconds
+  1. Grab HALS from GitHub Releases (installer or zip)
+  2. Run Start-HALS.cmd
+  3. Initialize-HALSDeviceProvider → connect a platform
+  4. Initialize-HALSAI → pick an AI provider
+  5. Ask-HALSAI "which lights are on?"
+
+  https://github.com/PhillyOC/HALS
+
+One-line install (PowerShell):
+  irm https://github.com/PhillyOC/HALS/releases/latest/download/Install-FromGitHub.ps1 | iex
+
+Current release: 1.0.10 · MIT License · Windows + PS7
+
+Star the repo, open an issue, or fork it — HALS is built to
+grow with your home.

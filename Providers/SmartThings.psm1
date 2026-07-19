@@ -16,10 +16,26 @@ function Connect-SmartThings {
     $OAuthPath = Join-Path $Root "Secrets\OAuth\SmartThings.json"
     $PatPath = Join-Path $Root "Secrets\SmartThings.json"
 
+    if (-not (Get-Command Test-HALSOAuthCredentialsConfigured -ErrorAction SilentlyContinue)) {
+        Import-Module (Join-Path (Get-HALSRoot) "Core\HALSOAuth.psm1") -Force -ErrorAction SilentlyContinue
+    }
+
+    $OAuthReady = $false
     if (Test-Path -LiteralPath $OAuthPath) {
-
         try {
+            $OAuthConfig = Get-Content -LiteralPath $OAuthPath -Raw | ConvertFrom-Json
+            $OAuthReady = (Test-HALSOAuthCredentialsConfigured -Configuration $OAuthConfig) -and
+                (($OAuthConfig.PSObject.Properties["Authorized"] -and $OAuthConfig.Authorized) -or
+                 ($OAuthConfig.PSObject.Properties["AccessToken"] -and
+                  -not [string]::IsNullOrWhiteSpace([string]$OAuthConfig.AccessToken)))
+        }
+        catch {
+            $OAuthReady = $false
+        }
+    }
 
+    if ($OAuthReady) {
+        try {
             $AccessToken = Get-HALSOAuthAccessToken `
                 -Provider "SmartThings"
 
@@ -27,23 +43,19 @@ function Connect-SmartThings {
                 -ForegroundColor DarkGray
 
             return @{
-
                 Headers = @{
-
                     Authorization = "Bearer $AccessToken"
                     Accept        = "application/json"
-
                 }
-
             }
-
         }
         catch {
-
             throw "SmartThings OAuth failed: $($_.Exception.Message) Run Reconnect-SmartThingsOAuth or Initialize-SmartThings to reauthorize."
-
         }
+    }
 
+    if (Test-Path -LiteralPath $OAuthPath) {
+        throw "SmartThings OAuth is not finished. Run Reconnect-SmartThingsOAuth or Initialize-SmartThings (option 1)."
     }
 
     if (Test-Path -LiteralPath $PatPath) {
@@ -54,22 +66,15 @@ function Connect-SmartThings {
         $Secrets = Get-Content -LiteralPath $PatPath -Raw | ConvertFrom-Json
 
         if ([string]::IsNullOrWhiteSpace($Secrets.Token)) {
-
             throw "SmartThings PAT file exists but Token is empty. Run Initialize-SmartThings."
-
         }
 
         return @{
-
             Headers = @{
-
                 Authorization = "Bearer $($Secrets.Token)"
                 Accept        = "application/json"
-
             }
-
         }
-
     }
 
     throw "SmartThings is not configured. Run Initialize-SmartThings."
@@ -380,10 +385,10 @@ function Initialize-SmartThings {
         throw "Invalid SmartThings authentication method."
     }
 
-    $Token = (Read-Host "SmartThings personal access token" -MaskInput).Trim()
-    if ([string]::IsNullOrWhiteSpace($Token)) {
-        throw "SmartThings token cannot be empty."
-    }
+    $Token = Read-HALSSecretInput `
+        -Prompt "SmartThings personal access token" `
+        -Hint "Paste the full SmartThings personal access token (legacy; OAuth is recommended)." `
+        -MinimumLength 20
 
     $Folder = Join-Path (Get-HALSRoot) "Secrets"
     if (-not (Test-Path $Folder)) {
