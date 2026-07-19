@@ -1,5 +1,34 @@
 # Changelog
 
+## 1.0.10 — 2026-07-19
+
+Stable UniFi release for legacy Cloud Key Gen1 and ui.com Site Manager API keys. Setup, reconnect on startup, and inventory scan are verified end-to-end.
+
+### Fixed
+- **UniFi Gen1 Cloud Key** — Legacy login on port 443/8443 with local admin password; auto-tries both ports and API styles. Handles Cloud Key `/api/login` HTTP 500 on 8443 by falling back to 443.
+- **UniFi Site Manager (ui.com API keys)** — cloud auth via `api.ui.com/v1` with `dataExpand` response parsing; setup skips controller host when using option 1.
+- **UniFi startup reconnect** — fixed PowerShell line-continuation parse error in `Connect-HALSConfiguredUniFi` (`if` treated as command on restart).
+- **UniFi inventory StrictMode** — safe property access when converting clients and infrastructure (devices without a `name` field no longer mark UniFi offline).
+- **Secret input (PS 7)** — `Read-HALSSecretInput` uses clipboard or visible paste; fixes `-MaskInput` truncating pasted API keys/passwords to one character.
+- **UniFi setup** — StrictMode-safe connection property updates (`SiteId`, `Sites`, `SiteApiSlug`); case-insensitive site name selection.
+
+### Changed
+- **`Secrets/UniFi.example.json`** — documents Legacy password auth (`Classic` / port 8443). Site Manager keys use `AuthMethod: ApiKey`, `ApiMode: SiteManager`, `Host: api.ui.com`.
+- **`Docs/Web-Provider-Matrix.md`** — UniFi marked working (inventory read-only).
+
+## 1.0.9 — 2026-07-19
+
+### Fixed
+- **UniFi setup / inventory** — auto-detect legacy controllers (8443, `/api/login`) and UniFi OS consoles (443, `/api/auth/login`, `/proxy/network/api/...`). Setup wizard uses port **auto** and saves `ControllerType`. Fixes "connection refused" when only one port/API style was tried.
+- **UniFi login validation** — checks API `meta.rc` and uses cookie sessions via `Invoke-WebRequest` instead of treating error JSON as success.
+- **UniFi API key auth** — recommended path for UniFi OS / Cloud Key Gen2+ (`X-API-KEY` header); setup wizard offers API key or local password. Uses Integration v1 API (`/proxy/network/integration/v1/...`) with site UUID for sites/clients/devices instead of legacy `/api/s/default/stat/*` paths that reject API keys.
+- **UniFi inventory parsing** — safe response handling under StrictMode (no direct `.data` access); resolves site slugs via `internalReference` and saves `SiteId` + `ApiMode` in config.
+- **UniFi Gen1 Cloud Key** — password auth on port 8443 uses Legacy API paths first; inventory probes site slug (`name`, `_id`) and controller type before saving.
+
+### Changed
+- **`Secrets/UniFi.example.json`** — documents `AuthMethod`, `ApiKey`, `ApiMode`, `SiteId`, and `ControllerType` (`Legacy` or `UniFiOS`).
+- **`Docs/Web-Provider-Matrix.md`** — cleaned up from integration testing notes.
+
 ## 1.0.8 — 2026-07-18
 
 Official OAuth-ready release with Windows installer, portable zip, and one-line bootstrap install. SmartThings OAuth verified end-to-end.

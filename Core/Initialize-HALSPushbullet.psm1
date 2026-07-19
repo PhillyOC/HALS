@@ -10,8 +10,8 @@ if (-not (Get-Command Initialize-HALSOAuthConfiguration -ErrorAction SilentlyCon
     Import-Module (Join-Path (Get-HALSRoot) "Core\HALSOAuth.psm1") -Force -WarningAction SilentlyContinue
 }
 
-if (-not (Get-Command Ensure-HALSGateway -ErrorAction SilentlyContinue)) {
-    Import-Module (Join-Path (Get-HALSRoot) "Core\HALSGatewayManager.psm1") -Force
+if (-not (Get-Command Initialize-HALSGateway -ErrorAction SilentlyContinue)) {
+    Import-Module (Join-Path (Get-HALSRoot) "Core\HALSGatewayManager.psm1") -Force -WarningAction SilentlyContinue
 }
 
 function Initialize-HALSPushbullet {

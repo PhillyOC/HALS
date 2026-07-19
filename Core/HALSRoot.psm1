@@ -72,6 +72,55 @@ function Get-HALSSanitizedSecret {
 
 }
 
+function Read-HALSSecretInput {
+
+    param(
+        [Parameter(Mandatory)]
+        [string]$Prompt,
+
+        [string]$Hint = "Copy the full value to your clipboard, then press Enter.",
+
+        [int]$MinimumLength = 1
+    )
+
+    Write-Host ""
+    Write-Host $Hint -ForegroundColor DarkGray
+    Write-Host "Masked PowerShell prompts only capture the first pasted character in PS 7." -ForegroundColor DarkGray
+    Write-Host ""
+
+    $Method = (Read-Host "Input method: [1] Clipboard  [2] Visible prompt [1]").Trim()
+    if ([string]::IsNullOrWhiteSpace($Method)) {
+        $Method = "1"
+    }
+
+    $Value = $null
+    if ($Method -eq "2") {
+        Write-Host "Input is visible while you type or paste." -ForegroundColor Yellow
+        $Value = Read-Host $Prompt
+    }
+    else {
+        $Ack = (Read-Host "Press Enter when ready, or paste the value here").Trim()
+        if (-not [string]::IsNullOrWhiteSpace($Ack)) {
+            $Value = $Ack
+        }
+        else {
+            $Value = Get-Clipboard -Raw -ErrorAction SilentlyContinue
+            if ([string]::IsNullOrWhiteSpace($Value)) {
+                Write-Host "Clipboard is empty. Paste visibly instead." -ForegroundColor Yellow
+                $Value = Read-Host $Prompt
+            }
+        }
+    }
+
+    $Clean = Get-HALSSanitizedSecret -Value $Value
+    if ($Clean.Length -lt $MinimumLength) {
+        throw "$Prompt looks too short ($($Clean.Length) characters)."
+    }
+
+    return $Clean
+
+}
+
 function Test-HALSNetworkHostInput {
 
     param(
@@ -101,4 +150,9 @@ function Test-HALSNetworkHostInput {
 
 }
 
-Export-ModuleMember -Function Get-HALSRoot, Test-HALSRootPath, Get-HALSSanitizedSecret, Test-HALSNetworkHostInput
+Export-ModuleMember -Function `
+    Get-HALSRoot, `
+    Test-HALSRootPath, `
+    Get-HALSSanitizedSecret, `
+    Read-HALSSecretInput, `
+    Test-HALSNetworkHostInput

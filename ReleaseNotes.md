@@ -1,4 +1,4 @@
-# HALS 1.0.8 — OAuth-ready release
+# HALS 1.0.10 — UniFi-stable release
 
 **Home Automation & Logging System** for Windows + PowerShell 7. Connect SmartThings, UniFi, Home Assistant, Hue, Nest, and more; control devices with natural language via HALSAI.
 
@@ -6,8 +6,8 @@
 
 | Asset | Use case |
 |-------|----------|
-| **[HALS-Setup-1.0.8.exe](https://github.com/PhillyOC/HALS/releases/download/v1.0.8/HALS-Setup-1.0.8.exe)** | Recommended Windows installer (no admin required) |
-| **[HALS-1.0.8.zip](https://github.com/PhillyOC/HALS/releases/download/v1.0.8/HALS-1.0.8.zip)** | Portable copy — unzip anywhere and run `Start-HALS.cmd` |
+| **[HALS-Setup-1.0.10.exe](https://github.com/PhillyOC/HALS/releases/download/v1.0.10/HALS-Setup-1.0.10.exe)** | Recommended Windows installer (no admin required) |
+| **[HALS-1.0.10.zip](https://github.com/PhillyOC/HALS/releases/download/v1.0.10/HALS-1.0.10.zip)** | Portable copy — unzip anywhere and run `Start-HALS.cmd` |
 
 Default install location: `%LOCALAPPDATA%\Programs\HALS`
 
@@ -25,33 +25,30 @@ irm https://github.com/PhillyOC/HALS/releases/latest/download/Install-FromGitHub
 4. Run **`Initialize-HALSAI`** to set up OpenAI, Claude, Gemini, or Ollama.
 5. Use **`Ask-HALSAI`** for natural-language control.
 
-## Highlights (1.0.5 → 1.0.8)
+## Highlights (1.0.10)
 
-### SmartThings OAuth (verified working)
-- Desktop OAuth via `https://httpbin.org/get` — no ngrok required for initial setup
-- **`Reconnect-SmartThingsOAuth`** finishes authorization when credentials are saved but tokens are missing
-- Automatic clipboard detection with stale-URL protection
-- Correct token exchange (`client_id` in POST body)
+### UniFi (verified on Cloud Key Gen1)
+- **Local admin login** for legacy controllers — port 443/8443 auto-detection, site picker, startup reconnect
+- **ui.com Site Manager API keys** — optional cloud path for accounts without local Integration keys
+- **Inventory on startup** — gateways, access points, switches, and clients populate HOME OVERVIEW
+- **PS 7 secret paste fix** — clipboard/visible input for API keys and passwords (no more one-character `-MaskInput` bug)
 
-### OAuth & setup reliability
-- OAuth gateway auto-starts on port 8000
-- Setup wizards for all major providers with validation and clearer error messages
-- UniFi site auto-correction (`default` vs hostname mistakes)
-- StrictMode fixes across AI and OAuth flows
+### Prior release features (1.0.5 → 1.0.8)
+- SmartThings OAuth via httpbin desktop flow
+- OAuth gateway auto-start on port 8000
+- Provider setup wizards with validation
+- Windows installer + portable zip + GitHub bootstrap install
 
-### AI (HALSAI)
-- Canonical system prompt on every request
-- Immediate plan execution (`-Verbose` to preview)
-- Plan repair for color and all-lights requests
+## UniFi setup tips
 
-## SmartThings OAuth tip
+| Controller | Auth | HALS option |
+|------------|------|-------------|
+| Cloud Key Gen1 (Network 7.x) | Local admin password | Option **2** — host `192.168.x.x`, port **443** or **8443** |
+| ui.com API key | Site Manager + Network scope | Option **1** — paste full key via clipboard |
 
-Create your app with the SmartThings CLI (`smartthings apps:create`, type **OAuth-In App**), register redirect URI **`https://httpbin.org/get`**, then run **`Initialize-SmartThings`** or **`Reconnect-SmartThingsOAuth`**. After browser login, copy the **address bar URL** (Ctrl+L, Ctrl+C).
+UniFi is **read-only** in HALS (inventory visibility). Device control uses SmartThings, Hue, WiZ, etc.
 
 ## Requirements
 
 - Windows 10/11
 - [PowerShell 7](https://learn.microsoft.com/powershell/scripting/install/installing-powershell-on-windows)
-- Provider credentials stored locally in `Secrets\` (never committed)
-
-Full changelog: see [CHANGELOG.md](CHANGELOG.md) in the repository.

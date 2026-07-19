@@ -119,14 +119,14 @@ This stages the portable tree, compiles `dist\HALS-Setup-1.0.8.exe`, and copies 
 
 ### Publish a GitHub Release
 
-1. Ensure `VERSION` matches the release (currently `1.0.8`)
+1. Ensure `VERSION` matches the release (currently `1.0.10`)
 2. Update `ReleaseNotes.md` for the GitHub release page
 3. Commit and push to `main`
 4. Tag and push:
 
 ```powershell
-git tag v1.0.8
-git push origin v1.0.8
+git tag v1.0.10
+git push origin v1.0.10
 ```
 
 The Release workflow builds the zip, compiles `HALS-Setup-<version>.exe` with Inno Setup, and uploads the assets.
